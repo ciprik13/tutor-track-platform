@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useLessons, useDeleteLesson, useTogglePayment } from "@/queries/useLessons";
 import { useStudents } from "@/queries/useStudents";
 import LessonModal from "@/components/lessons/LessonModal";
-import type { Lesson } from "@/types";
 import MonthPicker from "@/components/ui/MonthPicker";
 import CalendarImport from "@/components/calendar/CalendarImport";
 import { useSelector } from "react-redux";
@@ -34,11 +33,11 @@ const IcTrash = () => (
 )
 
 export default function LessonsPage() {
-  const [studentFilter, setStudentFilter] = useState<number | undefined>();
+  const [studentFilter, setStudentFilter] = useState<string | undefined>();
   const [monthFilter, setMonthFilter]     = useState(new Date().toISOString().slice(0, 7));
   const [paymentFilter, setPaymentFilter] = useState<'paid' | 'unpaid' | undefined>();
   const [modalOpen, setModalOpen]         = useState(false);
-  const [editLesson, setEditLesson]       = useState<Lesson | null>(null);
+  const [editLesson, setEditLesson]       = useState<any | null>(null);
   const [calendarImport, setCalendarImport] = useState(false);
 
   const googleConnected = useSelector((s: RootState) => s.profile.googleCalendarConnected);
@@ -48,12 +47,13 @@ export default function LessonsPage() {
   const deleteLesson  = useDeleteLesson();
   const togglePayment = useTogglePayment();
 
-  const handleEdit   = (l: Lesson) => { setEditLesson(l); setModalOpen(true) }
+  const handleEdit   = (l: any) => { setEditLesson(l); setModalOpen(true) }
   const handleAdd    = () => { setEditLesson(null); setModalOpen(true) }
-  const handleDelete = (id: number) => { if (confirm('Sigur vrei să ștergi această lecție?')) deleteLesson.mutate(id) }
-  const handleToggle = (l: Lesson) => togglePayment.mutate({ id: l.id!, paymentStatus: l.paymentStatus === 'paid' ? 'unpaid' : 'paid' })
+  const handleDelete = (id: string) => { if (confirm('Sigur vrei să ștergi această lecție?')) deleteLesson.mutate(id) }
+  const handleToggle = (l: any) => togglePayment.mutate({ id: l.id, isPaid: !l.isPaid })
 
-  const getStudent = (id: number) => students.find(s => s.id === id)
+  const getStudent = (id: string) => (students as any[]).find(s => s.id === id)
+
   const fmtShort = (iso: string) => {
     const d = new Date(iso)
     return { day: d.getDate(), mon: d.toLocaleDateString('ro-RO', { month: 'short' }).replace('.', '') }
@@ -64,17 +64,16 @@ export default function LessonsPage() {
   }
   const fmtDow = (iso: string) => new Date(iso).toLocaleDateString('ro-RO', { weekday: 'long' })
 
-  // Group by day
-  const grouped = lessons.reduce((acc, l) => {
+  const grouped = (lessons as any[]).reduce((acc, l) => {
     const day = l.date.slice(0, 10)
     if (!acc[day]) acc[day] = []
     acc[day].push(l)
     return acc
-  }, {} as Record<string, typeof lessons>)
-  const sortedDays = Object.entries(grouped).sort(([a], [b]) => b.localeCompare(a))
+  }, {} as Record<string, any[]>)
+  const sortedDays = Object.entries(grouped).sort(([a], [b]) => b.localeCompare(a)) as [string, any[]][]
 
-  const totalRevenue = lessons.reduce((s, l) => s + l.pricePerSession, 0)
-  const unpaidCount  = lessons.filter(l => l.paymentStatus === 'unpaid').length
+  const totalRevenue = (lessons as any[]).reduce((s, l) => s + Number(l.price), 0)
+  const unpaidCount  = (lessons as any[]).filter(l => !l.isPaid).length
 
   return (
     <div style={{ padding: '28px 36px 60px', maxWidth: 1280 }}>
@@ -84,7 +83,7 @@ export default function LessonsPage() {
         <div>
           <h1 className="tt-page-title">Lecții</h1>
           <p className="tt-page-sub">
-            {lessons.length} lecții
+            {(lessons as any[]).length} lecții
             {totalRevenue > 0 && ` · ${totalRevenue.toLocaleString()} MDL`}
             {unpaidCount > 0 && ` · ${unpaidCount} neachitate`}
           </p>
@@ -109,12 +108,12 @@ export default function LessonsPage() {
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
         <select
           value={studentFilter ?? ''}
-          onChange={e => setStudentFilter(e.target.value ? Number(e.target.value) : undefined)}
+          onChange={e => setStudentFilter(e.target.value || undefined)}
           className="tt-input"
           style={{ width: 'auto', minWidth: 200 }}
         >
           <option value="">Toți studenții</option>
-          {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          {(students as any[]).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
 
         <MonthPicker value={monthFilter} onChange={setMonthFilter} />
@@ -137,7 +136,7 @@ export default function LessonsPage() {
       {/* Content */}
       {isLoading ? (
         <p style={{ color: 'var(--text-3)', fontSize: 13.5 }}>Se încarcă...</p>
-      ) : lessons.length === 0 ? (
+      ) : (lessons as any[]).length === 0 ? (
         <div style={{ textAlign: 'center', paddingTop: 64 }}>
           <p style={{ color: 'var(--text-3)', fontSize: 14 }}>Nicio lecție găsită</p>
           <button onClick={handleAdd} style={{ marginTop: 12, color: 'var(--accent)', fontSize: 13.5, background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -151,7 +150,6 @@ export default function LessonsPage() {
             const dow = fmtDow(day + 'T00:00')
             return (
               <div key={day} className="tt-card" style={{ padding: 0, overflow: 'hidden', marginBottom: 10 }}>
-                {/* Day header */}
                 <div style={{
                   display: 'flex', justifyContent: 'space-between', padding: '9px 20px',
                   background: 'var(--bg-page)',
@@ -161,11 +159,10 @@ export default function LessonsPage() {
                 }}>
                   <span style={{ textTransform: 'capitalize' }}>{dow}, {d} {mon}</span>
                   <span className="tabular">
-                    {dayLessons.length} {dayLessons.length === 1 ? 'lecție' : 'lecții'} · {dayLessons.reduce((s, l) => s + l.pricePerSession, 0).toLocaleString()} MDL
+                    {dayLessons.length} {dayLessons.length === 1 ? 'lecție' : 'lecții'} · {dayLessons.reduce((s, l) => s + Number(l.price), 0).toLocaleString()} MDL
                   </span>
                 </div>
 
-                {/* Lesson rows */}
                 {dayLessons.map((lesson, i) => {
                   const student = getStudent(lesson.studentId)
                   return (
@@ -191,25 +188,25 @@ export default function LessonsPage() {
                         )}
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {student?.name ?? '—'}
+                            {student?.name ?? lesson.studentNameSnapshot ?? '—'}
                           </div>
                           <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 1 }}>
-                            {student?.subject} · {lesson.durationMinutes} min
+                            {lesson.subjectSnapshot ?? student?.subject} · {lesson.durationMinutes} min
                           </div>
                         </div>
                       </div>
                       <div className="tabular" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)' }}>
-                        {lesson.pricePerSession.toLocaleString()} MDL
+                        {Number(lesson.price).toLocaleString()} MDL
                       </div>
                       <button
                         onClick={() => handleToggle(lesson)}
-                        className={`tt-pill ${lesson.paymentStatus === 'paid' ? 'tt-pill-paid' : 'tt-pill-unpaid'}`}
+                        className={`tt-pill ${lesson.isPaid ? 'tt-pill-paid' : 'tt-pill-unpaid'}`}
                         style={{ cursor: 'pointer', border: 'none', height: 24, transition: 'opacity 120ms' }}
                         onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = '0.8'}
                         onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = '1'}
                       >
-                        <span className={`tt-dot ${lesson.paymentStatus === 'paid' ? 'tt-dot-paid' : 'tt-dot-unpaid'}`} />
-                        {lesson.paymentStatus === 'paid' ? 'Achitat' : 'Neachitat'}
+                        <span className={`tt-dot ${lesson.isPaid ? 'tt-dot-paid' : 'tt-dot-unpaid'}`} />
+                        {lesson.isPaid ? 'Achitat' : 'Neachitat'}
                       </button>
                       <button
                         onClick={() => handleEdit(lesson)}
@@ -218,7 +215,7 @@ export default function LessonsPage() {
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-3)' }}
                       ><IcEdit /></button>
                       <button
-                        onClick={() => handleDelete(lesson.id!)}
+                        onClick={() => handleDelete(lesson.id)}
                         style={{ width: 28, height: 28, borderRadius: 7, color: 'var(--text-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 120ms' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--danger-soft)'; (e.currentTarget as HTMLElement).style.color = 'var(--danger)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-3)' }}
@@ -232,7 +229,7 @@ export default function LessonsPage() {
         </div>
       )}
 
-      {modalOpen     && <LessonModal lesson={editLesson} onClose={() => setModalOpen(false)} />}
+      {modalOpen      && <LessonModal lesson={editLesson} onClose={() => setModalOpen(false)} />}
       {calendarImport && <CalendarImport onClose={() => setCalendarImport(false)} />}
     </div>
   );
