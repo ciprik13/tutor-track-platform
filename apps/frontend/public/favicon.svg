@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#2b6777"/>
+  <!-- Simplified compass arrow pointing up-right -->
+  <circle cx="32" cy="32" r="18" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"/>
+  <!-- North arrow (white, pointing up-right) -->
+  <polygon points="32,12 37,28 32,25 27,28" fill="white" opacity="0.95"/>
+  <!-- South arrow (dimmed, pointing down-left) -->
+  <polygon points="32,52 27,36 32,39 37,36" fill="rgba(255,255,255,0.45)"/>
+  <!-- Graduation cap hint — small square cap top -->
+  <rect x="27" y="10" width="10" height="3" rx="1" fill="white" opacity="0.85"/>
+  <rect x="24" y="12" width="16" height="2" rx="1" fill="white" opacity="0.7"/>
+</svg>

@@ -7,7 +7,6 @@ import { useLessons } from "@/queries/useLessons";
 import { useState } from "react";
 import LessonModal from "@/components/lessons/LessonModal";
 
-// ── Shared micro-icons ────────────────────────────────────────
 const IcUsers = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -52,7 +51,6 @@ const IcPlus = () => (
   </svg>
 )
 
-// ── Stat card ─────────────────────────────────────────────────
 interface StatCardProps {
   label: string
   value: string | number
@@ -107,13 +105,12 @@ function StatCard({ label, value, sub, icon, tone = 'default', onClick, delta }:
   )
 }
 
-// ── Page ─────────────────────────────────────────────────────
 export default function DashboardPage() {
   const navigate = useNavigate()
   const profile  = useSelector((s: RootState) => s.profile)
   const [lessonModal, setLessonModal] = useState(false)
 
-  const currentMonth    = new Date().toISOString().slice(0, 7)
+  const currentMonth = new Date().toISOString().slice(0, 7)
   const currentWeekStart = (() => {
     const d = new Date(); d.setDate(d.getDate() - d.getDay() + 1)
     return d.toISOString().slice(0, 10)
@@ -122,13 +119,13 @@ export default function DashboardPage() {
   const { data: students = [] }   = useStudents()
   const { data: allLessons = [] } = useLessons()
 
-  const activeStudents    = students.filter(s => s.status === 'active')
-  const lessonsThisMonth  = allLessons.filter(l => l.date.startsWith(currentMonth) && l.status === 'done')
-  const lessonsThisWeek   = allLessons.filter(l => l.date.slice(0, 10) >= currentWeekStart && l.status === 'done')
-  const unpaidTotal       = allLessons.filter(l => l.paymentStatus === 'unpaid' && l.status === 'done').reduce((s, l) => s + l.pricePerSession, 0)
-  const recentActivity    = [...allLessons].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 6)
+  const activeStudents   = students.filter(s => s.status === 'active')
+  const lessonsThisMonth = allLessons.filter((l: any) => l.date.startsWith(currentMonth))
+  const lessonsThisWeek  = allLessons.filter((l: any) => l.date.slice(0, 10) >= currentWeekStart)
+  const unpaidTotal      = allLessons.filter((l: any) => !l.isPaid).reduce((s: number, l: any) => s + Number(l.price), 0)
+  const recentActivity   = [...allLessons].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 6)
 
-  const getStudent = (id: number) => students.find(s => s.id === id)
+  const getStudent = (id: string) => students.find((s: any) => s.id === id)
 
   const fmtShort = (iso: string) => {
     const d = new Date(iso)
@@ -149,7 +146,7 @@ export default function DashboardPage() {
   return (
     <div style={{ padding: '32px 36px 60px', maxWidth: 1280 }}>
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 32, gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{
@@ -168,7 +165,7 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* ── Stat cards ── */}
+      {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
         <StatCard
           label="Studenți activi" value={activeStudents.length}
@@ -178,7 +175,7 @@ export default function DashboardPage() {
         <StatCard
           label={`Lecții în ${new Date().toLocaleDateString('ro-RO', { month: 'long' })}`}
           value={lessonsThisMonth.length}
-          sub={`${lessonsThisMonth.reduce((s, l) => s + l.pricePerSession, 0).toLocaleString()} ${profile.currency} total`}
+          sub={`${lessonsThisMonth.reduce((s: number, l: any) => s + Number(l.price), 0).toLocaleString()} ${profile.currency} total`}
           icon={<IcBook />} onClick={() => navigate('/lessons')}
         />
         <StatCard
@@ -196,7 +193,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* ── Two-column body ── */}
+      {/* Two-column body */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 16 }}>
 
         {/* Recent activity */}
@@ -225,7 +222,7 @@ export default function DashboardPage() {
               </button>
             </div>
           ) : (
-            recentActivity.map((lesson, idx) => {
+            recentActivity.map((lesson: any, idx: number) => {
               const student = getStudent(lesson.studentId)
               const { day, mon } = fmtShort(lesson.date)
               return (
@@ -247,19 +244,18 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.01em' }}>
-                      {student?.name ?? '—'}
-                      {student?.priority && <span style={{ color: 'var(--warning)', marginLeft: 6 }}><IcStar /></span>}
+                      {student?.name ?? lesson.studentNameSnapshot ?? '—'}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
-                      {student?.subject} · {lesson.durationMinutes} min · {fmtTime(lesson.date)}
+                      {lesson.subjectSnapshot} · {lesson.durationMinutes} min · {fmtTime(lesson.date)}
                     </div>
                   </div>
                   <div className="tabular" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-1)' }}>
-                    {lesson.pricePerSession.toLocaleString()} {profile.currency}
+                    {Number(lesson.price).toLocaleString()} {profile.currency}
                   </div>
-                  <span className={`tt-pill ${lesson.paymentStatus === 'paid' ? 'tt-pill-paid' : 'tt-pill-unpaid'}`}>
-                    <span className={`tt-dot ${lesson.paymentStatus === 'paid' ? 'tt-dot-paid' : 'tt-dot-unpaid'}`} />
-                    {lesson.paymentStatus === 'paid' ? 'Achitat' : 'Neachitat'}
+                  <span className={`tt-pill ${lesson.isPaid ? 'tt-pill-paid' : 'tt-pill-unpaid'}`}>
+                    <span className={`tt-dot ${lesson.isPaid ? 'tt-dot-paid' : 'tt-dot-unpaid'}`} />
+                    {lesson.isPaid ? 'Achitat' : 'Neachitat'}
                   </span>
                 </div>
               )
@@ -293,9 +289,9 @@ export default function DashboardPage() {
               </button>
             </div>
           ) : (
-            activeStudents.slice(0, 6).map((student, idx) => {
-              const studentLessons = allLessons.filter(l => l.studentId === student.id && l.date.startsWith(currentMonth) && l.status === 'done')
-              const unpaid = studentLessons.filter(l => l.paymentStatus === 'unpaid').reduce((s, l) => s + l.pricePerSession, 0)
+            activeStudents.slice(0, 6).map((student: any, idx: number) => {
+              const studentLessons = allLessons.filter((l: any) => l.studentId === student.id && l.date.startsWith(currentMonth))
+              const unpaid = studentLessons.filter((l: any) => !l.isPaid).reduce((s: number, l: any) => s + Number(l.price), 0)
               return (
                 <div
                   key={student.id}
@@ -312,10 +308,7 @@ export default function DashboardPage() {
                     {getInitials(student.name)}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.01em' }}>{student.name}</span>
-                      {student.priority && <span style={{ color: 'var(--warning)' }}><IcStar /></span>}
-                    </div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.01em' }}>{student.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
                       {student.subject} · {studentLessons.length} lecții luna aceasta
                     </div>
