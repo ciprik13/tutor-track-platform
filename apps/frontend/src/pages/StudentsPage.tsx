@@ -3,16 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { getInitials } from "@/lib/dateUtils";
 import { useStudents, useDeleteStudent } from "@/queries/useStudents";
 import StudentModal from "@/components/students/StudentModal";
-import type { Student } from "@/types";
 
 const IcSearch = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-  </svg>
-)
-const IcStar = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
   </svg>
 )
 const IcPlus = () => (
@@ -35,10 +29,10 @@ const IcTrash = () => (
 
 export default function StudentsPage() {
   const navigate = useNavigate();
-  const [search, setSearch]           = useState("");
+  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
-  const [modalOpen, setModalOpen]     = useState(false);
-  const [editStudent, setEditStudent] = useState<Student | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editStudent, setEditStudent] = useState<any | null>(null);
 
   const { data: students = [], isLoading } = useStudents({
     status: statusFilter === "all" ? undefined : statusFilter,
@@ -46,9 +40,9 @@ export default function StudentsPage() {
   });
   const deleteStudent = useDeleteStudent();
 
-  const handleEdit = (student: Student) => { setEditStudent(student); setModalOpen(true) }
-  const handleAdd  = () => { setEditStudent(null); setModalOpen(true) }
-  const handleDelete = (id: number) => {
+  const handleEdit = (student: any) => { setEditStudent(student); setModalOpen(true) }
+  const handleAdd = () => { setEditStudent(null); setModalOpen(true) }
+  const handleDelete = (id: string) => {
     if (confirm("Sigur vrei să ștergi acest student?")) deleteStudent.mutate(id)
   }
 
@@ -60,8 +54,8 @@ export default function StudentsPage() {
         <div>
           <h1 className="tt-page-title">Studenți</h1>
           <p className="tt-page-sub">
-            {students.filter(s => s.status === 'active').length} activi
-            {students.filter(s => s.status === 'inactive').length > 0 && ` · ${students.filter(s => s.status === 'inactive').length} inactivi`}
+            {students.filter((s: any) => s.status === 'active').length} activi
+            {students.filter((s: any) => s.status === 'inactive').length > 0 && ` · ${students.filter((s: any) => s.status === 'inactive').length} inactivi`}
           </p>
         </div>
         <button onClick={handleAdd} className="tt-btn tt-btn-primary" style={{ height: 38 }}>
@@ -106,7 +100,7 @@ export default function StudentsPage() {
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 8 }}>
-          {students.map(student => (
+          {students.map((student: any) => (
             <div
               key={student.id}
               className="tt-card"
@@ -119,7 +113,6 @@ export default function StudentsPage() {
               onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-pop)'}
               onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-card)'}
             >
-              {/* Avatar + info — clickable */}
               <div
                 style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, cursor: 'pointer', minWidth: 0 }}
                 onClick={() => navigate(`/students/${student.id}`)}
@@ -132,15 +125,13 @@ export default function StudentsPage() {
                     <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.01em' }}>
                       {student.name}
                     </span>
-                    {student.priority && <span style={{ color: 'var(--warning)' }}><IcStar /></span>}
                   </div>
                   <div style={{ fontSize: 12.5, color: 'var(--text-3)', marginTop: 2 }}>
-                    {student.subject} · {student.grade}
+                    {student.subject} · Clasa {student.grade}
                   </div>
                 </div>
               </div>
 
-              {/* Right: status + actions */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                 <span className={`tt-pill ${student.status === 'active' ? 'tt-pill-active' : 'tt-pill-inactive'}`}>
                   {student.status === 'active' ? 'Activ' : 'Inactiv'}
@@ -153,7 +144,7 @@ export default function StudentsPage() {
                   title="Editează"
                 ><IcEdit /></button>
                 <button
-                  onClick={() => handleDelete(student.id!)}
+                  onClick={() => handleDelete(student.id)}
                   style={{ width: 30, height: 30, borderRadius: 7, color: 'var(--text-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 120ms' }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--danger-soft)'; (e.currentTarget as HTMLElement).style.color = 'var(--danger)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-3)' }}
