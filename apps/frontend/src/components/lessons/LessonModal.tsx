@@ -3,14 +3,13 @@ import { useCreateLesson, useUpdateLesson } from '@/queries/useLessons'
 import { useStudents } from '@/queries/useStudents'
 import { useSelector } from 'react-redux'
 import type { RootState } from '@/store'
-import type { Lesson } from '@/types'
 import DatePicker from '@/components/ui/DatePicker'
 import { toLocalISOString } from '@/lib/dateUtils'
 
 interface Props {
-  lesson: Lesson | null
+  lesson: any | null
   onClose: () => void
-  preselectedStudentId?: number
+  preselectedStudentId?: string
 }
 
 const IcClose = () => (
@@ -20,20 +19,17 @@ const IcClose = () => (
 )
 
 export default function LessonModal({ lesson, onClose, preselectedStudentId }: Props) {
-  const profile  = useSelector((s: RootState) => s.profile)
+  const profile = useSelector((s: RootState) => s.profile)
   const { data: students = [] } = useStudents()
 
-  const [form, setForm] = useState<Omit<Lesson, 'id'>>({
-    studentId:           lesson?.studentId ?? preselectedStudentId ?? 0,
-    title:               lesson?.title ?? '',
-    date:                lesson?.date ?? toLocalISOString(new Date()),
-    durationMinutes:     lesson?.durationMinutes ?? 60,
-    pricePerSession:     lesson?.pricePerSession ?? profile.defaultPrice60,
-    status:              lesson?.status ?? 'done',
-    paymentStatus:       lesson?.paymentStatus ?? 'unpaid',
-    googleCalendarEventId: lesson?.googleCalendarEventId ?? null,
-    notes:               lesson?.notes ?? '',
-    createdAt:           lesson?.createdAt ?? new Date().toISOString(),
+  const [form, setForm] = useState({
+    studentId:            lesson?.studentId ?? preselectedStudentId ?? '',
+    date:                 lesson?.date ?? toLocalISOString(new Date()),
+    durationMinutes:      lesson?.durationMinutes ?? 60,
+    price:                lesson?.price ? Number(lesson.price) : profile.defaultPrice60,
+    isPaid:               lesson?.isPaid ?? false,
+    googleCalendarEventId: lesson?.googleCalendarEventId ?? undefined,
+    notes:                lesson?.notes ?? '',
   })
 
   const createLesson = useCreateLesson()
@@ -42,13 +38,16 @@ export default function LessonModal({ lesson, onClose, preselectedStudentId }: P
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setForm(prev => {
-      const updated = {
+      const updated: any = {
         ...prev,
-        [name]: ['durationMinutes','pricePerSession','studentId'].includes(name) ? Number(value) : value,
+        [name]: ['durationMinutes', 'price'].includes(name) ? Number(value)
+               : name === 'isPaid' ? value === 'paid'
+               : name === 'studentId' ? value
+               : value,
       }
       if (name === 'durationMinutes') {
         const d = Number(value) as 60 | 90 | 120
-        updated.pricePerSession = d === 60 ? profile.defaultPrice60 : d === 90 ? profile.defaultPrice90 : profile.defaultPrice120
+        updated.price = d === 60 ? profile.defaultPrice60 : d === 90 ? profile.defaultPrice90 : profile.defaultPrice120
       }
       return updated
     })
@@ -56,8 +55,11 @@ export default function LessonModal({ lesson, onClose, preselectedStudentId }: P
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (lesson?.id) updateLesson.mutate({ ...form, id: lesson.id }, { onSuccess: onClose })
-    else            createLesson.mutate(form, { onSuccess: onClose })
+    if (lesson?.id) {
+      updateLesson.mutate({ id: lesson.id, ...form }, { onSuccess: onClose })
+    } else {
+      createLesson.mutate(form, { onSuccess: onClose })
+    }
   }
 
   const isValid = form.studentId && form.date
@@ -100,13 +102,20 @@ export default function LessonModal({ lesson, onClose, preselectedStudentId }: P
             <div>
               <label className="tt-label">Student</label>
               <select name="studentId" value={form.studentId} onChange={handleChange} className="tt-input">
-                <option value={0} disabled>Selectează student</option>
-                {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                <option value="" disabled>Selectează student</option>
+                {(students as any[]).map((s: any) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
               </select>
             </div>
 
             {/* Date */}
-            <DatePicker label="Data și ora" value={form.date} onChange={val => setForm(p => ({ ...p, date: val }))} includeTime={true} />
+            <DatePicker
+              label="Data și ora"
+              value={form.date}
+              onChange={val => setForm(p => ({ ...p, date: val }))}
+              includeTime={true}
+            />
 
             {/* Duration + Price */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -120,32 +129,42 @@ export default function LessonModal({ lesson, onClose, preselectedStudentId }: P
               </div>
               <div>
                 <label className="tt-label">Preț ({profile.currency})</label>
-                <input name="pricePerSession" type="number" value={form.pricePerSession} onChange={handleChange} className="tt-input tabular" />
+                <input
+                  name="price"
+                  type="number"
+                  value={form.price}
+                  onChange={handleChange}
+                  className="tt-input tabular"
+                />
               </div>
             </div>
 
-            {/* Status */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div>
-                <label className="tt-label">Status lecție</label>
-                <select name="status" value={form.status} onChange={handleChange} className="tt-input">
-                  <option value="done">Efectuat</option>
-                  <option value="cancelled">Anulat</option>
-                </select>
-              </div>
-              <div>
-                <label className="tt-label">Status plată</label>
-                <select name="paymentStatus" value={form.paymentStatus} onChange={handleChange} className="tt-input">
-                  <option value="unpaid">Neachitat</option>
-                  <option value="paid">Achitat</option>
-                </select>
-              </div>
+            {/* Payment status */}
+            <div>
+              <label className="tt-label">Status plată</label>
+              <select
+                name="isPaid"
+                value={form.isPaid ? 'paid' : 'unpaid'}
+                onChange={handleChange}
+                className="tt-input"
+              >
+                <option value="unpaid">Neachitat</option>
+                <option value="paid">Achitat</option>
+              </select>
             </div>
 
             {/* Notes */}
             <div>
               <label className="tt-label">Note (opțional)</label>
-              <textarea name="notes" value={form.notes} onChange={handleChange} rows={2} placeholder="Observații..." className="tt-input" style={{ resize: 'none' }} />
+              <textarea
+                name="notes"
+                value={form.notes}
+                onChange={handleChange}
+                rows={2}
+                placeholder="Observații..."
+                className="tt-input"
+                style={{ resize: 'none' }}
+              />
             </div>
 
             {/* Footer */}
