@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { useCreateStudent, useUpdateStudent } from '@/queries/useStudents'
-import type { Student } from '@/types'
 
 interface Props {
-  student: Student | null
+  student: any | null
   onClose: () => void
 }
 
@@ -12,39 +11,33 @@ const IcClose = () => (
     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
   </svg>
 )
-const IcStar = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-  </svg>
-)
 
 export default function StudentModal({ student, onClose }: Props) {
-  const [form, setForm] = useState<Omit<Student, 'id'>>({
-    name:      student?.name      ?? '',
-    subject:   student?.subject   ?? '',
-    grade:     student?.grade     ?? '',
-    status:    student?.status    ?? 'active',
-    priority:  student?.priority  ?? false,
-    phone:     student?.phone     ?? '',
-    notes:     student?.notes     ?? '',
-    createdAt: student?.createdAt ?? new Date().toISOString(),
+  const [form, setForm] = useState({
+    name:    student?.name    ?? '',
+    subject: student?.subject ?? '',
+    grade:   student?.grade   ?? '',
+    status:  student?.status  ?? 'active',
+    phone:   student?.phone   ?? '',
+    email:   student?.email   ?? '',
+    notes:   student?.notes   ?? '',
   })
 
   const createStudent = useCreateStudent()
   const updateStudent = useUpdateStudent()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target
-    setForm(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
-    }))
+    const { name, value } = e.target
+    setForm(prev => ({ ...prev, [name]: value }))
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (student?.id) updateStudent.mutate({ ...form, id: student.id }, { onSuccess: onClose })
-    else             createStudent.mutate(form, { onSuccess: onClose })
+    if (student?.id) {
+      updateStudent.mutate({ id: student.id, ...form }, { onSuccess: onClose })
+    } else {
+      createStudent.mutate(form, { onSuccess: onClose })
+    }
   }
 
   const isValid = form.name.trim() && form.subject.trim()
@@ -66,7 +59,6 @@ export default function StudentModal({ student, onClose }: Props) {
         overflow: 'hidden', maxHeight: '90vh',
         display: 'flex', flexDirection: 'column',
       }}>
-        {/* Header */}
         <div style={{ padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0.5px solid var(--border)', flexShrink: 0 }}>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-1)', margin: 0 }}>
             {student ? 'Editează student' : 'Student nou'}
@@ -79,17 +71,13 @@ export default function StudentModal({ student, onClose }: Props) {
           ><IcClose /></button>
         </div>
 
-        {/* Body */}
         <div style={{ padding: 22, overflowY: 'auto' }}>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-            {/* Name */}
             <div>
               <label className="tt-label">Nume complet</label>
               <input name="name" value={form.name} onChange={handleChange} placeholder="ex. Alexandru Ciobanu" className="tt-input" />
             </div>
 
-            {/* Subject + Grade */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <label className="tt-label">Materie</label>
@@ -97,50 +85,34 @@ export default function StudentModal({ student, onClose }: Props) {
               </div>
               <div>
                 <label className="tt-label">Clasă</label>
-                <input name="grade" value={form.grade} onChange={handleChange} placeholder="ex. clasa 9" className="tt-input" />
+                <input name="grade" value={form.grade} onChange={handleChange} placeholder="ex. 9" className="tt-input" />
               </div>
             </div>
 
-            {/* Phone */}
-            <div>
-              <label className="tt-label">Telefon</label>
-              <input name="phone" value={form.phone} onChange={handleChange} placeholder="ex. +373 69 000 000" className="tt-input" />
-            </div>
-
-            {/* Status + Priority */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'end' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label className="tt-label">Status</label>
-                <select name="status" value={form.status} onChange={handleChange} className="tt-input">
-                  <option value="active">Activ</option>
-                  <option value="inactive">Inactiv</option>
-                </select>
+                <label className="tt-label">Telefon</label>
+                <input name="phone" value={form.phone} onChange={handleChange} placeholder="ex. +373 69 000 000" className="tt-input" />
               </div>
-              <button
-                type="button"
-                onClick={() => setForm(p => ({ ...p, priority: !p.priority }))}
-                style={{
-                  height: 38, padding: '0 14px', borderRadius: 'var(--r-md)',
-                  display: 'flex', alignItems: 'center', gap: 7,
-                  background: form.priority ? 'var(--warning-soft)' : 'var(--bg-input)',
-                  color: form.priority ? 'var(--warning-strong)' : 'var(--text-2)',
-                  border: form.priority ? '0.5px solid color-mix(in srgb, var(--warning) 30%, transparent)' : '0.5px solid transparent',
-                  fontSize: 13.5, fontWeight: 500, cursor: 'pointer', transition: 'all 120ms',
-                  fontFamily: 'var(--font-text)',
-                }}
-              >
-                <span style={{ color: form.priority ? 'var(--warning)' : 'var(--text-3)' }}><IcStar /></span>
-                Prioritar
-              </button>
+              <div>
+                <label className="tt-label">Email</label>
+                <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="ex. student@email.com" className="tt-input" />
+              </div>
             </div>
 
-            {/* Notes */}
+            <div>
+              <label className="tt-label">Status</label>
+              <select name="status" value={form.status} onChange={handleChange} className="tt-input">
+                <option value="active">Activ</option>
+                <option value="inactive">Inactiv</option>
+              </select>
+            </div>
+
             <div>
               <label className="tt-label">Note (opțional)</label>
-              <textarea name="notes" value={form.notes} onChange={handleChange} rows={2} placeholder="Observații despre stil de învățare, obiective..." className="tt-input" style={{ resize: 'none' }} />
+              <textarea name="notes" value={form.notes} onChange={handleChange} rows={2} placeholder="Observații..." className="tt-input" style={{ resize: 'none' }} />
             </div>
 
-            {/* Footer */}
             <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
               <button type="button" onClick={onClose} className="tt-btn tt-btn-secondary" style={{ flex: 1, height: 40, justifyContent: 'center' }}>
                 Anulează
