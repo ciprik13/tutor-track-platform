@@ -104,7 +104,7 @@ CREATE TABLE "google_calendar_tokens" (
     "refresh_token" TEXT NOT NULL,
     "expires_at" TIMESTAMP(3) NOT NULL,
     "google_email" TEXT,
-    "scopes" TEXT[],
+    "scopes" TEXT NOT NULL,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "last_synced_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

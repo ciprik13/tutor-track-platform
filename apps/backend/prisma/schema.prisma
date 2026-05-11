@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ─── Enums ────────────────────────────────────────────────
@@ -41,15 +42,15 @@ enum StudentStatus {
 // ─── Users ────────────────────────────────────────────────
 
 model User {
-  id          String     @id @default(uuid())
-  email       String     @unique
-  passwordHash String?   @map("password_hash")
-  name        String
-  role        UserRole   @default(TUTOR)
-  status      UserStatus @default(PENDING_APPROVAL)
-  phone       String?
-  avatarUrl   String?    @map("avatar_url")
-  timezone    String     @default("Europe/Chisinau")
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String?    @map("password_hash")
+  name         String
+  role         UserRole   @default(TUTOR)
+  status       UserStatus @default(PENDING_APPROVAL)
+  phone        String?
+  avatarUrl    String?    @map("avatar_url")
+  timezone     String     @default("Europe/Chisinau")
 
   approvedById String?   @map("approved_by")
   approvedBy   User?     @relation("ApprovedBy", fields: [approvedById], references: [id])
@@ -60,13 +61,13 @@ model User {
   deletedAt DateTime? @map("deleted_at")
 
   // Relations
-  approvedUsers        User[]               @relation("ApprovedBy")
-  students             Student[]            @relation("TutorStudents")
-  lessons              Lesson[]             @relation("TutorLessons")
-  payments             Payment[]            @relation("TutorPayments")
-  auditLogs            AuditLog[]
-  googleCalendarToken  GoogleCalendarToken?
-  studentProfile       Student?             @relation("StudentUserAccount")
+  approvedUsers       User[]               @relation("ApprovedBy")
+  students            Student[]            @relation("TutorStudents")
+  lessons             Lesson[]             @relation("TutorLessons")
+  payments            Payment[]            @relation("TutorPayments")
+  auditLogs           AuditLog[]
+  googleCalendarToken GoogleCalendarToken?
+  studentProfile      Student?             @relation("StudentUserAccount")
 
   @@map("users")
 }
@@ -89,11 +90,11 @@ model Student {
   email   String?
   notes   String?
 
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
-  deletedAt  DateTime? @map("deleted_at")
-  createdBy  String?   @map("created_by")
-  updatedBy  String?   @map("updated_by")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @map("created_by")
+  updatedBy String?   @map("updated_by")
 
   lessons  Lesson[]
   payments Payment[]
@@ -106,10 +107,10 @@ model Student {
 // ─── Lessons ──────────────────────────────────────────────
 
 model Lesson {
-  id        String @id @default(uuid())
-  tutorId   String @map("tutor_id")
-  tutor     User   @relation("TutorLessons", fields: [tutorId], references: [id])
-  studentId String @map("student_id")
+  id        String  @id @default(uuid())
+  tutorId   String  @map("tutor_id")
+  tutor     User    @relation("TutorLessons", fields: [tutorId], references: [id])
+  studentId String  @map("student_id")
   student   Student @relation(fields: [studentId], references: [id])
 
   date            DateTime
@@ -142,16 +143,16 @@ model Lesson {
 // ─── Payments ─────────────────────────────────────────────
 
 model Payment {
-  id        String @id @default(uuid())
-  tutorId   String @map("tutor_id")
-  tutor     User   @relation("TutorPayments", fields: [tutorId], references: [id])
-  studentId String @map("student_id")
+  id        String  @id @default(uuid())
+  tutorId   String  @map("tutor_id")
+  tutor     User    @relation("TutorPayments", fields: [tutorId], references: [id])
+  studentId String  @map("student_id")
   student   Student @relation(fields: [studentId], references: [id])
   lessonId  String  @unique @map("lesson_id")
   lesson    Lesson  @relation(fields: [lessonId], references: [id])
 
   amount Decimal       @db.Decimal(10, 2)
-  month  String        // "2025-04"
+  month  String
   status PaymentStatus @default(unpaid)
   paidAt DateTime?     @map("paid_at")
 
@@ -170,16 +171,16 @@ model Payment {
 // ─── Google Calendar Tokens ───────────────────────────────
 
 model GoogleCalendarToken {
-  id          String   @id @default(uuid())
-  tutorId     String   @unique @map("tutor_id")
-  tutor       User     @relation(fields: [tutorId], references: [id])
+  id           String    @id @default(uuid())
+  tutorId      String    @unique @map("tutor_id")
+  tutor        User      @relation(fields: [tutorId], references: [id])
 
-  accessToken  String   @map("access_token")   // encrypted
-  refreshToken String   @map("refresh_token")  // encrypted
-  expiresAt    DateTime @map("expires_at")
-  googleEmail  String?  @map("google_email")
-  scopes       String[]
-  isActive     Boolean  @default(true) @map("is_active")
+  accessToken  String    @map("access_token")
+  refreshToken String    @map("refresh_token")
+  expiresAt    DateTime  @map("expires_at")
+  googleEmail  String?   @map("google_email")
+  scopes       String
+  isActive     Boolean   @default(true) @map("is_active")
   lastSyncedAt DateTime? @map("last_synced_at")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -191,19 +192,19 @@ model GoogleCalendarToken {
 // ─── Audit Log ────────────────────────────────────────────
 
 model AuditLog {
-  id         BigInt   @id @default(autoincrement())
-  userId     String?  @map("user_id")
-  user       User?    @relation(fields: [userId], references: [id])
+  id         BigInt  @id @default(autoincrement())
+  userId     String? @map("user_id")
+  user       User?   @relation(fields: [userId], references: [id])
 
-  action     String   // CREATE | UPDATE | DELETE | LOGIN | SYNC
-  entityType String   @map("entity_type") // student | lesson | payment | user
-  entityId   String?  @map("entity_id")
-  oldValue   Json?    @map("old_value")
-  newValue   Json?    @map("new_value")
-  ipAddress  String?  @map("ip_address")
-  userAgent  String?  @map("user_agent")
+  action     String
+  entityType String  @map("entity_type")
+  entityId   String? @map("entity_id")
+  oldValue   Json?   @map("old_value")
+  newValue   Json?   @map("new_value")
+  ipAddress  String? @map("ip_address")
+  userAgent  String? @map("user_agent")
 
-  createdAt  DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([userId])
   @@index([entityType, entityId])
