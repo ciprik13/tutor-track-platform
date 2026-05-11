@@ -5,6 +5,8 @@ import configuration from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { StudentsModule } from './students/students.module';
+import { LessonsModule } from './lessons/lessons.module';
+import { PaymentsModule } from './payments/payments.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -12,13 +14,12 @@ import { RolesGuard } from './auth/guards/roles.guard';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      load: [configuration],
-    }),
+    ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
     PrismaModule,
     AuthModule,
     StudentsModule,
+    LessonsModule,
+    PaymentsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
