@@ -7,16 +7,10 @@ import { usePayments, useDeletePayment } from "@/queries/usePayments";
 import { useQueryClient } from "@tanstack/react-query";
 import LessonModal from "@/components/lessons/LessonModal";
 import PaymentModal from "@/components/payments/PaymentModal";
-import type { Lesson, Payment } from "@/types";
 
 const IcBack = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="15 18 9 12 15 6"/>
-  </svg>
-)
-const IcStar = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
   </svg>
 )
 const IcWallet = () => (
@@ -48,30 +42,31 @@ const IcCheck = () => (
 )
 
 export default function StudentDetailPage() {
-  const { id }         = useParams();
-  const navigate       = useNavigate();
-  const queryClient    = useQueryClient();
-  const [activeTab, setActiveTab]   = useState<"lessons" | "payments" | "report">("lessons");
+  const { id }      = useParams();
+  const navigate    = useNavigate();
+  const queryClient = useQueryClient();
+
+  const [activeTab, setActiveTab]       = useState<"lessons" | "payments" | "report">("lessons");
   const [lessonModal, setLessonModal]   = useState(false);
   const [paymentModal, setPaymentModal] = useState(false);
-  const [editLesson, setEditLesson]     = useState<Lesson | null>(null);
-  const [editPayment, setEditPayment]   = useState<Payment | null>(null);
+  const [editLesson, setEditLesson]     = useState<any | null>(null);
+  const [editPayment, setEditPayment]   = useState<any | null>(null);
 
-  const { data: student, isLoading } = useStudent(Number(id));
-  const { data: lessons  = [] }      = useLessons({ studentId: Number(id) });
-  const { data: payments = [] }      = usePayments({ studentId: Number(id) });
+  const { data: student, isLoading } = useStudent(id ?? '');
+  const { data: lessons  = [] }      = useLessons({ studentId: id });
+  const { data: payments = [] }      = usePayments({ studentId: id });
 
   const togglePayment = useTogglePayment();
   const deleteLesson  = useDeleteLesson();
   const deletePayment = useDeletePayment();
   const updateLesson  = useUpdateLesson();
 
-  const unpaidLessons = lessons.filter(l => l.paymentStatus === 'unpaid' && l.status === 'done');
-  const unpaidTotal   = unpaidLessons.reduce((s, l) => s + l.pricePerSession, 0);
-  const paidTotal     = lessons.filter(l => l.paymentStatus === 'paid').reduce((s, l) => s + l.pricePerSession, 0);
+  const unpaidLessons = (lessons as any[]).filter(l => !l.isPaid);
+  const unpaidTotal   = unpaidLessons.reduce((s: number, l: any) => s + Number(l.price), 0);
+  const paidTotal     = (lessons as any[]).filter(l => l.isPaid).reduce((s: number, l: any) => s + Number(l.price), 0);
 
   const handleMarkAllPaid = async () => {
-    await Promise.all(unpaidLessons.map(l => updateLesson.mutateAsync({ ...l, paymentStatus: 'paid' })));
+    await Promise.all(unpaidLessons.map((l: any) => updateLesson.mutateAsync({ id: l.id, isPaid: true })));
     queryClient.invalidateQueries({ queryKey: ['lessons'] });
   };
 
@@ -97,15 +92,15 @@ export default function StudentDetailPage() {
   );
 
   const tabs: Array<{ key: 'lessons' | 'payments' | 'report'; label: string; count?: number }> = [
-    { key: 'lessons',  label: 'Lecții',  count: lessons.length  },
-    { key: 'payments', label: 'Plăți',   count: payments.length },
+    { key: 'lessons',  label: 'Lecții',  count: (lessons as any[]).length  },
+    { key: 'payments', label: 'Plăți',   count: (payments as any[]).length },
     { key: 'report',   label: 'Raport' },
   ]
 
   return (
     <div style={{ minHeight: '100%' }}>
 
-      {/* ── Sticky header ── */}
+      {/* Sticky header */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 10,
         background: 'color-mix(in srgb, var(--bg-page) 92%, transparent)',
@@ -113,7 +108,6 @@ export default function StudentDetailPage() {
         borderBottom: '0.5px solid var(--border)',
       }}>
         <div style={{ maxWidth: 1100, padding: '14px 36px 0' }}>
-          {/* Back */}
           <button
             onClick={() => navigate('/students')}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--text-2)', background: 'none', border: 'none', cursor: 'pointer', marginBottom: 14, transition: 'color 120ms' }}
@@ -123,25 +117,24 @@ export default function StudentDetailPage() {
             <IcBack /> Toți studenții
           </button>
 
-          {/* Student info row */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <div className="tt-avatar" style={{ width: 52, height: 52, fontSize: 18 }}>
-                {getInitials(student.name)}
+                {getInitials((student as any).name)}
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <h1 style={{
                     fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600,
                     letterSpacing: '-0.025em', color: 'var(--text-1)', margin: 0,
-                  }}>{student.name}</h1>
-                  {student.priority && <span style={{ color: 'var(--warning)' }}><IcStar /></span>}
-                  <span className={`tt-pill ${student.status === 'active' ? 'tt-pill-active' : 'tt-pill-inactive'}`}>
-                    {student.status === 'active' ? 'Activ' : 'Inactiv'}
+                  }}>{(student as any).name}</h1>
+                  <span className={`tt-pill ${(student as any).status === 'active' ? 'tt-pill-active' : 'tt-pill-inactive'}`}>
+                    {(student as any).status === 'active' ? 'Activ' : 'Inactiv'}
                   </span>
                 </div>
                 <p style={{ fontSize: 13.5, color: 'var(--text-2)', margin: '4px 0 0' }}>
-                  {student.subject} · {student.grade}{student.phone && ` · ${student.phone}`}
+                  {(student as any).subject} · Clasa {(student as any).grade}
+                  {(student as any).phone && ` · ${(student as any).phone}`}
                 </p>
               </div>
             </div>
@@ -172,9 +165,6 @@ export default function StudentDetailPage() {
                 <span className="tabular" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--warning-strong)' }}>
                   {unpaidTotal.toLocaleString()} MDL
                 </span>
-                <span style={{ fontSize: 12, color: 'var(--warning-strong)', opacity: 0.75, marginLeft: 6 }}>
-                  Trimite raportul sau marchează ca achitat.
-                </span>
               </div>
               <button
                 onClick={handleMarkAllPaid}
@@ -199,8 +189,7 @@ export default function StudentDetailPage() {
                   fontSize: 13.5, fontWeight: activeTab === key ? 600 : 500,
                   color: activeTab === key ? 'var(--text-1)' : 'var(--text-2)',
                   borderBottom: activeTab === key ? '2px solid var(--accent)' : '2px solid transparent',
-                  marginBottom: -1,
-                  transition: 'all 120ms',
+                  marginBottom: -1, transition: 'all 120ms',
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   background: 'none', border: 'none', borderRadius: 0,
                   cursor: 'pointer', whiteSpace: 'nowrap',
@@ -217,13 +206,13 @@ export default function StudentDetailPage() {
         </div>
       </div>
 
-      {/* ── Tab content ── */}
+      {/* Tab content */}
       <div style={{ maxWidth: 1100, padding: '24px 36px 60px' }}>
 
         {/* Lessons tab */}
         {activeTab === 'lessons' && (
           <div className="tt-card" style={{ padding: 0, overflow: 'hidden' }}>
-            {lessons.length === 0 ? (
+            {(lessons as any[]).length === 0 ? (
               <div style={{ padding: '48px 24px', textAlign: 'center' }}>
                 <p style={{ color: 'var(--text-3)', fontSize: 13.5 }}>Nicio lecție înregistrată</p>
                 <button onClick={() => { setEditLesson(null); setLessonModal(true) }} style={{ marginTop: 10, color: 'var(--accent)', fontSize: 13.5, background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -231,7 +220,7 @@ export default function StudentDetailPage() {
                 </button>
               </div>
             ) : (
-              lessons.map((lesson, idx) => {
+              (lessons as any[]).map((lesson: any, idx: number) => {
                 const { day, mon } = fmtShort(lesson.date)
                 return (
                   <div
@@ -239,7 +228,7 @@ export default function StudentDetailPage() {
                     style={{
                       display: 'grid', gridTemplateColumns: '52px 1fr auto auto auto auto',
                       alignItems: 'center', gap: 14, padding: '14px 22px',
-                      borderBottom: idx < lessons.length - 1 ? '0.5px solid var(--border)' : 'none',
+                      borderBottom: idx < (lessons as any[]).length - 1 ? '0.5px solid var(--border)' : 'none',
                     }}
                   >
                     <div style={{ textAlign: 'center' }}>
@@ -248,20 +237,20 @@ export default function StudentDetailPage() {
                     </div>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.01em' }}>
-                        {student.subject} · {lesson.durationMinutes} min
+                        {lesson.subjectSnapshot ?? (student as any).subject} · {lesson.durationMinutes} min
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{fmtTime(lesson.date)}</div>
                     </div>
                     <div className="tabular" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)' }}>
-                      {lesson.pricePerSession.toLocaleString()} MDL
+                      {Number(lesson.price).toLocaleString()} MDL
                     </div>
                     <button
-                      onClick={() => togglePayment.mutate({ id: lesson.id!, paymentStatus: lesson.paymentStatus === 'paid' ? 'unpaid' : 'paid' })}
-                      className={`tt-pill ${lesson.paymentStatus === 'paid' ? 'tt-pill-paid' : 'tt-pill-unpaid'}`}
+                      onClick={() => togglePayment.mutate({ id: lesson.id, isPaid: !lesson.isPaid })}
+                      className={`tt-pill ${lesson.isPaid ? 'tt-pill-paid' : 'tt-pill-unpaid'}`}
                       style={{ cursor: 'pointer', border: 'none', height: 24 }}
                     >
-                      <span className={`tt-dot ${lesson.paymentStatus === 'paid' ? 'tt-dot-paid' : 'tt-dot-unpaid'}`} />
-                      {lesson.paymentStatus === 'paid' ? 'Achitat' : 'Neachitat'}
+                      <span className={`tt-dot ${lesson.isPaid ? 'tt-dot-paid' : 'tt-dot-unpaid'}`} />
+                      {lesson.isPaid ? 'Achitat' : 'Neachitat'}
                     </button>
                     <button
                       onClick={() => { setEditLesson(lesson); setLessonModal(true) }}
@@ -270,7 +259,7 @@ export default function StudentDetailPage() {
                       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-3)' }}
                     ><IcEdit /></button>
                     <button
-                      onClick={() => confirm('Ștergi lecția?') && deleteLesson.mutate(lesson.id!)}
+                      onClick={() => confirm('Ștergi lecția?') && deleteLesson.mutate(lesson.id)}
                       style={{ width: 28, height: 28, borderRadius: 7, color: 'var(--text-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 120ms' }}
                       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--danger-soft)'; (e.currentTarget as HTMLElement).style.color = 'var(--danger)' }}
                       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-3)' }}
@@ -285,7 +274,6 @@ export default function StudentDetailPage() {
         {/* Payments tab */}
         {activeTab === 'payments' && (
           <div>
-            {/* Summary cards */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
               <div className="tt-card" style={{ padding: 20 }}>
                 <div style={{ fontSize: 11, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Total achitat</div>
@@ -301,28 +289,30 @@ export default function StudentDetailPage() {
               </div>
             </div>
 
-            {payments.length === 0 ? (
+            {(payments as any[]).length === 0 ? (
               <div style={{ textAlign: 'center', paddingTop: 40 }}>
                 <p style={{ color: 'var(--text-3)', fontSize: 13.5 }}>Nicio plată înregistrată</p>
               </div>
             ) : (
               <div className="tt-card" style={{ padding: 0 }}>
-                {payments.map((payment, idx) => (
+                {(payments as any[]).map((payment: any, idx: number) => (
                   <div
                     key={payment.id}
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
                       padding: '14px 22px',
-                      borderBottom: idx < payments.length - 1 ? '0.5px solid var(--border)' : 'none',
+                      borderBottom: idx < (payments as any[]).length - 1 ? '0.5px solid var(--border)' : 'none',
                     }}
                   >
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)' }}>{payment.period}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{fmtDate(payment.date)}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)' }}>{payment.month}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+                        {payment.paidAt ? fmtDate(payment.paidAt) : 'Neachitat'}
+                      </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span className="tabular" style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)' }}>
-                        {payment.amount.toLocaleString()} {payment.currency}
+                        {Number(payment.amount).toLocaleString()} MDL
                       </span>
                       <span className={`tt-pill ${payment.status === 'paid' ? 'tt-pill-paid' : payment.status === 'partial' ? 'tt-pill-partial' : 'tt-pill-unpaid'}`}>
                         {payment.status === 'paid' ? 'Achitat' : payment.status === 'partial' ? 'Parțial' : 'Neachitat'}
@@ -332,7 +322,7 @@ export default function StudentDetailPage() {
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card-hover)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-1)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-3)' }}
                       ><IcEdit /></button>
-                      <button onClick={() => confirm('Ștergi plata?') && deletePayment.mutate(payment.id!)}
+                      <button onClick={() => confirm('Ștergi plata?') && deletePayment.mutate(payment.id)}
                         style={{ width: 28, height: 28, borderRadius: 7, color: 'var(--text-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 120ms' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--danger-soft)'; (e.currentTarget as HTMLElement).style.color = 'var(--danger)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-3)' }}
@@ -363,7 +353,7 @@ export default function StudentDetailPage() {
       </div>
 
       {lessonModal && (
-        <LessonModal lesson={editLesson} preselectedStudentId={Number(id)} onClose={() => setLessonModal(false)} />
+        <LessonModal lesson={editLesson} onClose={() => setLessonModal(false)} />
       )}
       {paymentModal && (
         <PaymentModal payment={editPayment} onClose={() => setPaymentModal(false)} />

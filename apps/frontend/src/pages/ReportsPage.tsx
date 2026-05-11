@@ -25,41 +25,43 @@ const IcWhatsApp = () => (
 )
 
 export default function ReportsPage() {
-  const [selectedStudentId, setSelectedStudentId] = useState<number | undefined>();
+  const [selectedStudentId, setSelectedStudentId] = useState<string | undefined>();
   const [selectedMonth, setSelectedMonth]         = useState(new Date().toISOString().slice(0, 7));
   const [copied, setCopied]                       = useState(false);
 
-  const profile     = useSelector((s: RootState) => s.profile);
-  const queryClient = useQueryClient();
+  const profile      = useSelector((s: RootState) => s.profile);
+  const queryClient  = useQueryClient();
   const updateLesson = useUpdateLesson();
+
   const { data: students = [] } = useStudents();
-  const { data: lessons  = [] } = useLessons({ studentId: selectedStudentId, month: selectedMonth, status: 'done' });
+  const { data: lessons  = [] } = useLessons({ studentId: selectedStudentId, month: selectedMonth });
 
-  const student = students.find(s => s.id === selectedStudentId);
+  const student = (students as any[]).find((s: any) => s.id === selectedStudentId);
 
-  const grouped = lessons.reduce((acc, l) => {
+  const grouped = (lessons as any[]).reduce((acc: Record<number, any[]>, l: any) => {
     const key = l.durationMinutes;
     if (!acc[key]) acc[key] = [];
     acc[key].push(l);
     return acc;
-  }, {} as Record<number, typeof lessons>);
+  }, {});
 
   const monthLabel = new Date(selectedMonth + '-01').toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' });
   const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' });
 
   const generateReport = () => {
     if (!student) return '';
-    let idx = 1; const lines: string[] = [];
+    let idx = 1;
+    const lines: string[] = [];
     lines.push(`Salut ${student.name}. Îți trimit orarul lecțiilor de ${student.subject} din luna ${monthLabel}:`);
     lines.push('');
-    lessons.forEach(l => lines.push(`${idx++}) ${fmtDate(l.date)} — ${l.durationMinutes} minute`));
+    (lessons as any[]).forEach((l: any) => lines.push(`${idx++}) ${fmtDate(l.date)} — ${l.durationMinutes} minute`));
     lines.push('');
     lines.push('💰 Calcul total:');
     let grand = 0;
     Object.entries(grouped).forEach(([dur, items]) => {
-      const sub = items.reduce((s, l) => s + l.pricePerSession, 0);
+      const sub = (items as any[]).reduce((s: number, l: any) => s + Number(l.price), 0);
       grand += sub;
-      lines.push(`📚 ${items.length} × ${dur} min × ${items[0].pricePerSession} lei = ${sub} lei`);
+      lines.push(`📚 ${items.length} × ${dur} min × ${Number((items as any[])[0].price)} lei = ${sub} lei`);
     });
     lines.push('');
     lines.push(`Total de achitat: ${grand} lei`);
@@ -70,18 +72,21 @@ export default function ReportsPage() {
   };
 
   const report = generateReport();
+
   const handleCopy = async () => {
     await navigator.clipboard.writeText(report);
-    setCopied(true); setTimeout(() => setCopied(false), 2000);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
+
   const handleMarkAllPaid = async () => {
-    const unpaid = lessons.filter(l => l.paymentStatus === 'unpaid');
-    await Promise.all(unpaid.map(l => updateLesson.mutateAsync({ ...l, paymentStatus: 'paid' })));
+    const unpaid = (lessons as any[]).filter((l: any) => !l.isPaid);
+    await Promise.all(unpaid.map((l: any) => updateLesson.mutateAsync({ id: l.id, isPaid: true })));
     queryClient.invalidateQueries({ queryKey: ['lessons'] });
   };
 
-  const totalAmount  = lessons.reduce((s, l) => s + l.pricePerSession, 0);
-  const unpaidAmount = lessons.filter(l => l.paymentStatus === 'unpaid').reduce((s, l) => s + l.pricePerSession, 0);
+  const totalAmount  = (lessons as any[]).reduce((s: number, l: any) => s + Number(l.price), 0);
+  const unpaidAmount = (lessons as any[]).filter((l: any) => !l.isPaid).reduce((s: number, l: any) => s + Number(l.price), 0);
 
   return (
     <div style={{ padding: '28px 36px 60px', maxWidth: 1280 }}>
@@ -94,17 +99,17 @@ export default function ReportsPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 20, alignItems: 'start' }}>
 
-        {/* ── Left: filters + summary ── */}
+        {/* Left: filters + summary */}
         <div className="tt-card" style={{ padding: 20 }}>
           <div style={{ marginBottom: 14 }}>
             <label className="tt-label">Student</label>
             <select
               value={selectedStudentId ?? ''}
-              onChange={e => setSelectedStudentId(e.target.value ? Number(e.target.value) : undefined)}
+              onChange={e => setSelectedStudentId(e.target.value || undefined)}
               className="tt-input"
             >
               <option value="">Selectează student</option>
-              {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {(students as any[]).map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
 
@@ -113,10 +118,9 @@ export default function ReportsPage() {
             <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
           </div>
 
-          {selectedStudentId && lessons.length > 0 && (
+          {selectedStudentId && (lessons as any[]).length > 0 && (
             <>
               <div className="tt-rule" style={{ marginBottom: 16 }} />
-              {/* Summary */}
               {student && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
                   <div className="tt-avatar" style={{ width: 34, height: 34, fontSize: 12 }}>
@@ -129,7 +133,7 @@ export default function ReportsPage() {
                 </div>
               )}
               {[
-                ['Lecții', lessons.length],
+                ['Lecții', (lessons as any[]).length],
                 ['Total', `${totalAmount.toLocaleString()} MDL`],
                 ['Neachitate', unpaidAmount > 0 ? `${unpaidAmount.toLocaleString()} MDL` : '—'],
               ].map(([lbl, val]) => (
@@ -142,7 +146,7 @@ export default function ReportsPage() {
           )}
         </div>
 
-        {/* ── Right: report preview ── */}
+        {/* Right: report preview */}
         <div>
           {!selectedStudentId ? (
             <div className="tt-card" style={{ padding: 28, textAlign: 'center' }}>
@@ -167,7 +171,7 @@ export default function ReportsPage() {
 Total de achitat: [total] lei`}
               </div>
             </div>
-          ) : lessons.length === 0 ? (
+          ) : (lessons as any[]).length === 0 ? (
             <div className="tt-card" style={{ padding: 40, textAlign: 'center' }}>
               <p style={{ fontSize: 14, color: 'var(--text-3)' }}>
                 Nicio lecție efectuată în {monthLabel} pentru {student?.name}
@@ -175,7 +179,6 @@ Total de achitat: [total] lei`}
             </div>
           ) : (
             <div className="tt-card" style={{ padding: 24 }}>
-              {/* Report text */}
               <div style={{
                 padding: '18px 20px', marginBottom: 18,
                 background: 'var(--bg-page)',
@@ -188,7 +191,6 @@ Total de achitat: [total] lei`}
                 {report}
               </div>
 
-              {/* CTAs */}
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <button
                   onClick={handleCopy}
@@ -197,32 +199,28 @@ Total de achitat: [total] lei`}
                 >
                   {copied ? <><IcCheck /> Copiat!</> : <><IcCopy /> Copiază în clipboard</>}
                 </button>
-                <button
-                  className="tt-btn tt-btn-secondary"
-                  style={{ height: 42 }}
-                >
+                <button className="tt-btn tt-btn-secondary" style={{ height: 42 }}>
                   <IcWhatsApp /> Deschide WhatsApp
                 </button>
               </div>
 
               <button
                 onClick={handleMarkAllPaid}
-                disabled={lessons.every(l => l.paymentStatus === 'paid')}
+                disabled={(lessons as any[]).every((l: any) => l.isPaid)}
                 className="tt-btn tt-btn-ghost"
                 style={{ marginTop: 10, width: '100%', height: 36, fontSize: 12.5 }}
               >
                 <IcCheck /> Marchează toate ca achitate
               </button>
 
-              {/* Duration breakdown */}
               {Object.keys(grouped).length > 0 && (
                 <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Object.keys(grouped).length}, 1fr)`, gap: 12, marginTop: 20 }}>
                   {Object.entries(grouped).map(([dur, items]) => (
                     <div key={dur} style={{ padding: '14px 16px', background: 'var(--bg-page)', borderRadius: 'var(--r-md)', border: '0.5px solid var(--border)' }}>
                       <div style={{ fontSize: 11, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>{dur} min</div>
-                      <div className="tt-metric tabular" style={{ fontSize: 24, color: 'var(--text-1)', marginTop: 6 }}>{items.length}</div>
+                      <div className="tt-metric tabular" style={{ fontSize: 24, color: 'var(--text-1)', marginTop: 6 }}>{(items as any[]).length}</div>
                       <div className="tabular" style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>
-                        {items.reduce((s, l) => s + l.pricePerSession, 0).toLocaleString()} {profile.currency}
+                        {(items as any[]).reduce((s: number, l: any) => s + Number(l.price), 0).toLocaleString()} {profile.currency}
                       </div>
                     </div>
                   ))}
