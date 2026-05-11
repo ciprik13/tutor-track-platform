@@ -241,9 +241,9 @@ const LogoFull = ({
     }}
   >
     <img
-      src="/logo.png"
+      src={`${import.meta.env.BASE_URL}logo.png`}
       alt="TutorTrack"
-      style={{ height, width: "auto", maxWidth: 170, display: "block" }}
+      style={{ height, width: "auto", maxWidth: 200, display: "block" }}
       onError={(e) => {
         const img = e.currentTarget as HTMLImageElement;
         img.style.display = "none";
@@ -256,15 +256,8 @@ const LogoFull = ({
   </div>
 );
 
-/**
- * Icon-only mark — shown in the collapsed sidebar (64px wide).
- * logo-icon.png is 615×406 px (ratio ≈ 1.51 : 1, NOT square).
- * We render it at a fixed width so it keeps its natural proportions
- * instead of being squeezed into a 1:1 box.
- */
 const LogoMark = ({ onClick }: { onClick?: () => void }) => {
-  // Natural render: 46 px wide → height ≈ 30 px (616/406 ≈ 1.52)
-  const W = 46;
+  const W = 36;
   return (
     <button
       onClick={onClick}
@@ -283,7 +276,7 @@ const LogoMark = ({ onClick }: { onClick?: () => void }) => {
       }}
     >
       <img
-        src="/logo-icon.png"
+        src={`${import.meta.env.BASE_URL}logo-icon.png`}
         alt="TutorTrack"
         style={{ width: W, height: "auto", display: "block" }}
         onError={(e) => {
@@ -343,7 +336,7 @@ export default function Layout({ children }: Props) {
           <>
             {/* Full logo — click navigates to dashboard */}
             <LogoFull
-              height={36}
+              height={40}
               onClick={() => {
                 navigate("/dashboard");
                 setMobileOpen(false);
