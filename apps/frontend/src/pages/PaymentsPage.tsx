@@ -9,12 +9,11 @@ import { useNavigate } from "react-router-dom";
 import MonthPicker from "@/components/ui/MonthPicker";
 
 interface MonthSummary {
-  studentId: number;
+  studentId: string;
   studentName: string;
   month: string;
   monthLabel: string;
   total: number;
-  // ↓ actual sum of unpaid lesson prices (not a proportional estimate)
   unpaidAmount: number;
   lessonCount: number;
   paidCount: number;
@@ -33,8 +32,6 @@ const IcUndo = () => (
   </svg>
 )
 
-// Shared column template — used by both header and every data row so they
-// always align, regardless of whether the actions cell has 1 or 2 buttons.
 const COL = "2fr 1fr 60px 1fr 120px 185px";
 
 export default function PaymentsPage() {
@@ -47,24 +44,23 @@ export default function PaymentsPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "unpaid" | "partial">("all");
 
   const { data: students   = [] } = useStudents();
-  const { data: allLessons = [] } = useLessons({ status: "done" });
+  const { data: allLessons = [] } = useLessons();
 
   // ── Build per-student-per-month summaries ──────────────────
   const summaries: MonthSummary[] = [];
-  students.forEach(student => {
-    const sl     = allLessons.filter(l => l.studentId === student.id);
-    const months = [...new Set(sl.map(l => l.date.slice(0, 7)))];
+  (students as any[]).forEach(student => {
+    const sl     = (allLessons as any[]).filter(l => l.studentId === student.id);
+    const months = [...new Set(sl.map((l: any) => l.date.slice(0, 7)))] as string[];
     months.forEach(month => {
-      const ml = sl.filter(l => l.date.startsWith(month));
+      const ml = sl.filter((l: any) => l.date.startsWith(month));
       if (!ml.length) return;
 
-      const total        = ml.reduce((s, l) => s + l.pricePerSession, 0);
-      const paidCount    = ml.filter(l => l.paymentStatus === "paid").length;
-      const unpaidCount  = ml.filter(l => l.paymentStatus === "unpaid").length;
-      // ↓ FIX: sum actual prices of unpaid lessons instead of proportional estimate
+      const total        = ml.reduce((s: number, l: any) => s + Number(l.price), 0);
+      const paidCount    = ml.filter((l: any) => l.isPaid).length;
+      const unpaidCount  = ml.filter((l: any) => !l.isPaid).length;
       const unpaidAmount = ml
-        .filter(l => l.paymentStatus === "unpaid")
-        .reduce((s, l) => s + l.pricePerSession, 0);
+        .filter((l: any) => !l.isPaid)
+        .reduce((s: number, l: any) => s + Number(l.price), 0);
 
       const status: MonthSummary["status"] =
         paidCount  === ml.length ? "paid"
@@ -72,7 +68,7 @@ export default function PaymentsPage() {
         : "partial";
 
       summaries.push({
-        studentId:   student.id!,
+        studentId:   student.id,
         studentName: student.name,
         month,
         monthLabel:  new Date(month + "-01").toLocaleDateString("ro-RO", { month: "long", year: "numeric" }),
@@ -106,25 +102,25 @@ export default function PaymentsPage() {
     : "";
 
   const handleMarkAllPaid = async (sm: MonthSummary) => {
-    const ml = allLessons.filter(
-      l => l.studentId === sm.studentId && l.date.startsWith(sm.month) && l.paymentStatus === "unpaid"
+    const ml = (allLessons as any[]).filter(
+      l => l.studentId === sm.studentId && l.date.startsWith(sm.month) && !l.isPaid
     );
-    await Promise.all(ml.map(l => updateLesson.mutateAsync({ ...l, paymentStatus: "paid" })));
+    await Promise.all(ml.map((l: any) => updateLesson.mutateAsync({ id: l.id, isPaid: true })));
     queryClient.invalidateQueries({ queryKey: ["lessons"] });
   };
 
   const handleMarkAllUnpaid = async (sm: MonthSummary) => {
-    const ml = allLessons.filter(
-      l => l.studentId === sm.studentId && l.date.startsWith(sm.month) && l.paymentStatus === "paid"
+    const ml = (allLessons as any[]).filter(
+      l => l.studentId === sm.studentId && l.date.startsWith(sm.month) && l.isPaid
     );
-    await Promise.all(ml.map(l => updateLesson.mutateAsync({ ...l, paymentStatus: "unpaid" })));
+    await Promise.all(ml.map((l: any) => updateLesson.mutateAsync({ id: l.id, isPaid: false })));
     queryClient.invalidateQueries({ queryKey: ["lessons"] });
   };
 
   return (
     <div style={{ padding: "28px 36px 60px", maxWidth: 1280 }}>
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24, gap: 16, flexWrap: "wrap" }}>
         <div>
           <h1 className="tt-page-title">Plăți</h1>
@@ -164,7 +160,7 @@ export default function PaymentsPage() {
         </div>
       </div>
 
-      {/* ── Filters ── */}
+      {/* Filters */}
       <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
         <MonthPicker value={monthFilter} onChange={setMonthFilter} />
         <div className="tt-filter-row">
@@ -181,7 +177,7 @@ export default function PaymentsPage() {
         </div>
       </div>
 
-      {/* ── Table ── */}
+      {/* Table */}
       {filtered.length === 0 ? (
         <div style={{ textAlign: "center", paddingTop: 64 }}>
           <p style={{ color: "var(--text-3)", fontSize: 14 }}>Nicio plată găsită</p>
@@ -189,8 +185,6 @@ export default function PaymentsPage() {
         </div>
       ) : (
         <div className="tt-card" style={{ padding: 0, overflow: "hidden" }}>
-
-          {/* Table header — same COL template as data rows */}
           <div style={{
             display: "grid", gridTemplateColumns: COL,
             padding: "10px 20px", borderBottom: "0.5px solid var(--border)",
@@ -206,7 +200,6 @@ export default function PaymentsPage() {
             <div />
           </div>
 
-          {/* Data rows */}
           {filtered.map((sm, idx) => (
             <div
               key={`${sm.studentId}-${sm.month}`}
@@ -220,7 +213,6 @@ export default function PaymentsPage() {
               onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "var(--bg-card-hover)"}
               onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}
             >
-              {/* Student */}
               <div
                 style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", minWidth: 0 }}
                 onClick={() => navigate(`/students/${sm.studentId}`)}
@@ -233,30 +225,25 @@ export default function PaymentsPage() {
                 </span>
               </div>
 
-              {/* Month */}
               <div style={{ fontSize: 13, color: "var(--text-2)", textTransform: "capitalize", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {sm.monthLabel}
               </div>
 
-              {/* Lesson count */}
               <div className="tabular" style={{ fontSize: 13.5, color: "var(--text-1)" }}>
                 {sm.lessonCount}
               </div>
 
-              {/* Total + unpaid sub-line */}
               <div>
                 <div className="tabular" style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>
                   {sm.total.toLocaleString()} {profile.currency}
                 </div>
                 {sm.status === "partial" && (
                   <div className="tabular" style={{ fontSize: 11.5, color: "var(--warning-strong)", marginTop: 2 }}>
-                    {/* ↓ FIX: show exact unpaid amount, not proportional estimate */}
                     {sm.unpaidAmount.toLocaleString()} neachitat
                   </div>
                 )}
               </div>
 
-              {/* Status pill */}
               <div>
                 <span className={`tt-pill ${sm.status === "paid" ? "tt-pill-paid" : sm.status === "partial" ? "tt-pill-partial" : "tt-pill-unpaid"}`}>
                   <span className={`tt-dot ${sm.status === "paid" ? "tt-dot-paid" : "tt-dot-unpaid"}`} />
@@ -264,7 +251,6 @@ export default function PaymentsPage() {
                 </span>
               </div>
 
-              {/* Actions — fixed 185px column, flex-end to right-align */}
               <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "nowrap" }}>
                 {sm.status !== "paid" && (
                   <button
