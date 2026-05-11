@@ -1,9 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import db from '@/db'
-import type { Lesson } from '@/types'
+import { lessonsApi } from '@/lib/lessonsApi'
 
 export function useLessons(filters?: {
-  studentId?: number
+  studentId?: string
   month?: string
   paymentStatus?: 'paid' | 'unpaid'
   status?: 'done' | 'cancelled'
@@ -11,19 +10,18 @@ export function useLessons(filters?: {
   return useQuery({
     queryKey: ['lessons', filters],
     queryFn: async () => {
-      let lessons = await db.lessons.toArray()
-      lessons.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      const response = await lessonsApi.getAll(100, 0)
+      let lessons = response.data
+      lessons.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
       if (filters?.studentId) {
-        lessons = lessons.filter(l => l.studentId === filters.studentId)
+        lessons = lessons.filter((l: any) => l.studentId === filters.studentId)
       }
       if (filters?.month) {
-        lessons = lessons.filter(l => l.date.startsWith(filters.month!))
+        lessons = lessons.filter((l: any) => l.date.startsWith(filters.month!))
       }
       if (filters?.paymentStatus) {
-        lessons = lessons.filter(l => l.paymentStatus === filters.paymentStatus)
-      }
-      if (filters?.status) {
-        lessons = lessons.filter(l => l.status === filters.status)
+        const isPaid = filters.paymentStatus === 'paid'
+        lessons = lessons.filter((l: any) => l.isPaid === isPaid)
       }
       return lessons
     },
@@ -33,7 +31,7 @@ export function useLessons(filters?: {
 export function useCreateLesson() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (data: Omit<Lesson, 'id'>) => db.lessons.add(data),
+    mutationFn: lessonsApi.create,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['lessons'] }),
   })
 }
@@ -41,7 +39,8 @@ export function useCreateLesson() {
 export function useUpdateLesson() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, ...data }: Lesson) => db.lessons.update(id!, data),
+    mutationFn: ({ id, ...data }: { id: string; [key: string]: any }) =>
+      lessonsApi.update(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['lessons'] }),
   })
 }
@@ -49,7 +48,7 @@ export function useUpdateLesson() {
 export function useDeleteLesson() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => db.lessons.delete(id),
+    mutationFn: (id: string) => lessonsApi.remove(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['lessons'] }),
   })
 }
@@ -57,18 +56,18 @@ export function useDeleteLesson() {
 export function useTogglePayment() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, paymentStatus }: { id: number; paymentStatus: 'paid' | 'unpaid' }) =>
-      db.lessons.update(id, { paymentStatus }),
-    onMutate: async ({ id, paymentStatus }) => {
+    mutationFn: ({ id, isPaid }: { id: string; isPaid: boolean }) =>
+      lessonsApi.update(id, { isPaid }),
+    onMutate: async ({ id, isPaid }) => {
       await queryClient.cancelQueries({ queryKey: ['lessons'] })
       const previous = queryClient.getQueriesData({ queryKey: ['lessons'] })
-      queryClient.setQueriesData({ queryKey: ['lessons'] }, (old: Lesson[] | undefined) =>
-        old?.map(l => l.id === id ? { ...l, paymentStatus } : l)
+      queryClient.setQueriesData({ queryKey: ['lessons'] }, (old: any) =>
+        old?.map((l: any) => l.id === id ? { ...l, isPaid } : l)
       )
       return { previous }
     },
     onError: (_err, _vars, context) => {
-      context?.previous?.forEach(([key, data]) => {
+      context?.previous?.forEach(([key, data]: any) => {
         queryClient.setQueryData(key, data)
       })
     },

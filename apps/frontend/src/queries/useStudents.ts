@@ -1,12 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import db from '@/db'
-import type { Student } from '@/types'
+import { studentsApi } from '@/lib/studentsApi'
 
 export function useStudents(filters?: { status?: 'active' | 'inactive'; search?: string }) {
   return useQuery({
     queryKey: ['students', filters],
     queryFn: async () => {
-      let students = await db.students.orderBy('name').toArray()
+      const response = await studentsApi.getAll(100, 0)
+      let students = response.data
       if (filters?.status) {
         students = students.filter(s => s.status === filters.status)
       }
@@ -19,10 +19,10 @@ export function useStudents(filters?: { status?: 'active' | 'inactive'; search?:
   })
 }
 
-export function useStudent(id: number) {
+export function useStudent(id: string) {
   return useQuery({
     queryKey: ['students', id],
-    queryFn: () => db.students.get(id),
+    queryFn: () => studentsApi.getOne(id),
     enabled: !!id,
   })
 }
@@ -30,7 +30,7 @@ export function useStudent(id: number) {
 export function useCreateStudent() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (data: Omit<Student, 'id'>) => db.students.add(data),
+    mutationFn: studentsApi.create,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['students'] }),
   })
 }
@@ -38,7 +38,8 @@ export function useCreateStudent() {
 export function useUpdateStudent() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, ...data }: Student) => db.students.update(id!, data),
+    mutationFn: ({ id, ...data }: { id: string; [key: string]: any }) =>
+      studentsApi.update(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['students'] }),
   })
 }
@@ -46,7 +47,7 @@ export function useUpdateStudent() {
 export function useDeleteStudent() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => db.students.delete(id),
+    mutationFn: (id: string) => studentsApi.remove(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['students'] }),
   })
 }
