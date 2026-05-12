@@ -1,64 +1,77 @@
-import React, { useEffect, useState } from 'react'
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { useDispatch, useSelector } from 'react-redux'
-import { loadProfileFromStorage } from '@/store/slices/profileSlice'
-import { setAuth } from '@/store/slices/authSlice'
-import { getToken, apiClient } from '@/lib/api'
-import type { AppDispatch, RootState } from '@/store'
-import Layout from '@/components/ui/Layout'
-import OnboardingPage from '@/pages/OnboardingPage'
-import LoginPage from '@/pages/LoginPage'
-import DashboardPage from '@/pages/DashboardPage'
-import StudentsPage from '@/pages/StudentsPage'
-import StudentDetailPage from '@/pages/StudentDetailPage'
-import LessonsPage from '@/pages/LessonsPage'
-import PaymentsPage from '@/pages/PaymentsPage'
-import ReportsPage from '@/pages/ReportsPage'
-import StatisticsPage from '@/pages/StatisticsPage'
-import SettingsPage from '@/pages/SettingsPage'
+import React, { useEffect, useState } from "react";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { setAuth } from "@/store/slices/authSlice";
+import { getToken, apiClient } from "@/lib/api";
+import type { AppDispatch, RootState } from "@/store";
+import Layout from "@/components/ui/Layout";
+import OnboardingPage from "@/pages/OnboardingPage";
+import LoginPage from "@/pages/LoginPage";
+import DashboardPage from "@/pages/DashboardPage";
+import StudentsPage from "@/pages/StudentsPage";
+import StudentDetailPage from "@/pages/StudentDetailPage";
+import LessonsPage from "@/pages/LessonsPage";
+import PaymentsPage from "@/pages/PaymentsPage";
+import ReportsPage from "@/pages/ReportsPage";
+import StatisticsPage from "@/pages/StatisticsPage";
+import SettingsPage from "@/pages/SettingsPage";
+import {
+  loadProfileFromStorage,
+  updateProfile,
+} from "@/store/slices/profileSlice";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const isAuthenticated = useSelector((s: RootState) => s.auth.isAuthenticated)
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />
+  const isAuthenticated = useSelector((s: RootState) => s.auth.isAuthenticated);
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
 function App() {
-  const dispatch = useDispatch<AppDispatch>()
-  const [ready, setReady] = useState(false)
+  const dispatch = useDispatch<AppDispatch>();
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    dispatch(loadProfileFromStorage())
+    dispatch(loadProfileFromStorage());
 
-    const token = getToken()
+    const token = getToken();
     if (token) {
-      // Token există în sessionStorage — restaurează sesiunea
-      apiClient.get('/auth/me')
+      apiClient
+        .get("/auth/me")
         .then(({ data }) => {
-          dispatch(setAuth({ user: data, token }))
+          dispatch(setAuth({ user: data, token }));
+          dispatch(
+            updateProfile({
+              name: data.name,
+              email: data.email,
+              phone: data.phone ?? "",
+            }),
+          );
         })
         .catch(() => {
-          // Token invalid sau expirat — curăță
-          import('@/lib/api').then(({ clearToken }) => clearToken())
+          import("@/lib/api").then(({ clearToken }) => clearToken());
         })
-        .finally(() => setReady(true))
+        .finally(() => setReady(true));
     } else {
-      setReady(true)
+      setReady(true);
     }
-  }, [dispatch])
+  }, [dispatch]);
 
   // Așteaptă verificarea tokenului înainte de render
   if (!ready) {
     return (
-      <div style={{
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--bg-page)',
-      }}>
-        <div style={{ fontSize: 13, color: 'var(--text-3)' }}>Se încarcă...</div>
+      <div
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--bg-page)",
+        }}
+      >
+        <div style={{ fontSize: 13, color: "var(--text-3)" }}>
+          Se încarcă...
+        </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -77,7 +90,7 @@ function App() {
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </HashRouter>
-  )
+  );
 }
 
-export default App
+export default App;

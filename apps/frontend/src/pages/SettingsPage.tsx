@@ -1,139 +1,500 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { updateProfile, clearProfile } from "@/store/slices/profileSlice";
 import { toggleTheme } from "@/store/slices/uiSlice";
 import type { RootState, AppDispatch } from "@/store";
-import { useNavigate } from "react-router-dom";
 import { studentsApi } from "@/lib/studentsApi";
 import { lessonsApi } from "@/lib/lessonsApi";
 import { paymentsApi } from "@/lib/paymentsApi";
 import { googleApi } from "@/lib/googleApi";
+import { apiClient } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
+// ── Icons ─────────────────────────────────────────────────────
 const IcCheck = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"/>
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="20 6 9 17 4 12" />
   </svg>
-)
+);
 const IcDownload = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-    <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
   </svg>
-)
+);
 const IcTrash = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6"/>
-    <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
-    <path d="M10 11v6M14 11v6"/>
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6" />
+    <path d="M10 11v6M14 11v6" />
   </svg>
-)
+);
 const IcCalendar = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
-    <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="3" y1="10" x2="21" y2="10" />
   </svg>
-)
+);
+const IcEdit = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </svg>
+);
+const IcGoogle = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16">
+    <path
+      d="M15.68 8.18c0-.57-.05-1.11-.14-1.64H8v3.1h4.31a3.68 3.68 0 0 1-1.6 2.42v2h2.6c1.52-1.4 2.4-3.46 2.4-5.88z"
+      fill="#4285F4"
+    />
+    <path
+      d="M8 16c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-2.7.75 4.79 4.79 0 0 1-4.5-3.32H.9v2.06A8 8 0 0 0 8 16z"
+      fill="#34A853"
+    />
+    <path
+      d="M3.5 9.49a4.83 4.83 0 0 1 0-3.08V4.35H.9a8 8 0 0 0 0 7.2l2.6-2.06z"
+      fill="#FBBC05"
+    />
+    <path
+      d="M8 3.18c1.23 0 2.33.42 3.2 1.25l2.4-2.4A8 8 0 0 0 .9 4.35L3.5 6.41A4.79 4.79 0 0 1 8 3.18z"
+      fill="#EA4335"
+    />
+  </svg>
+);
 
 type Tab = "profile" | "prices" | "integrations" | "data";
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: "profile",      label: "Profil"    },
-  { key: "prices",       label: "Prețuri"   },
+  { key: "profile", label: "Profil" },
+  { key: "prices", label: "Prețuri" },
   { key: "integrations", label: "Integrări" },
-  { key: "data",         label: "Date"      },
+  { key: "data", label: "Date" },
 ];
+
+// ── Profile Tab ───────────────────────────────────────────────
+function ProfileTab() {
+  const dispatch = useDispatch<AppDispatch>();
+  const profile = useSelector((s: RootState) => s.profile);
+  const theme = useSelector((s: RootState) => s.ui.theme);
+
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    name: profile.name,
+    phone: profile.phone,
+  });
+
+  const { data: googleStatus } = useQuery({
+    queryKey: ["google-status"],
+    queryFn: googleApi.getStatus,
+    retry: false,
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await apiClient.patch("/auth/me", { name: form.name, phone: form.phone });
+      dispatch(updateProfile({ name: form.name, phone: form.phone }));
+      setEditing(false);
+    } catch {
+      alert("Eroare la salvare.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setForm({ name: profile.name, phone: profile.phone });
+    setEditing(false);
+  };
+
+  const fieldStyle: React.CSSProperties = {
+    padding: "10px 14px",
+    borderRadius: "var(--r-md)",
+    background: "var(--bg-input)",
+    border: "0.5px solid var(--border)",
+    fontSize: 14,
+    color: "var(--text-1)",
+    minHeight: 42,
+    display: "flex",
+    alignItems: "center",
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div>
+          <div
+            style={{ fontSize: 15, fontWeight: 600, color: "var(--text-1)" }}
+          >
+            Informații personale
+          </div>
+          <div style={{ fontSize: 12.5, color: "var(--text-3)", marginTop: 2 }}>
+            {editing
+              ? "Editează datele tale de profil"
+              : "Datele tale de contact și autentificare"}
+          </div>
+        </div>
+        {!editing && (
+          <button
+            onClick={() => setEditing(true)}
+            className="tt-btn tt-btn-secondary"
+            style={{ height: 34, gap: 7, fontSize: 13 }}
+          >
+            <IcEdit /> Editează
+          </button>
+        )}
+      </div>
+
+      <div className="tt-rule" />
+
+      {/* Fields */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label className="tt-label">Nume complet</label>
+          {editing ? (
+            <input
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              className="tt-input"
+              autoFocus
+            />
+          ) : (
+            <div style={fieldStyle}>{profile.name || "—"}</div>
+          )}
+        </div>
+
+        <div>
+          <label className="tt-label">Email platformă</label>
+          <div style={{ ...fieldStyle, color: "var(--text-2)" }}>
+            {profile.email}
+            <span
+              style={{
+                marginLeft: 8,
+                fontSize: 11,
+                color: "var(--text-3)",
+                fontWeight: 500,
+              }}
+            >
+              (fix)
+            </span>
+          </div>
+        </div>
+
+        <div>
+          <label className="tt-label">Telefon</label>
+          {editing ? (
+            <input
+              name="phone"
+              value={form.phone}
+              onChange={handleChange}
+              className="tt-input"
+              placeholder="+373 69 000 000"
+            />
+          ) : (
+            <div style={fieldStyle}>{profile.phone || "—"}</div>
+          )}
+        </div>
+
+        {googleStatus?.connected && (
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label className="tt-label">Cont Google conectat</label>
+            <div style={{ ...fieldStyle, gap: 10 }}>
+              <IcGoogle />
+              <span style={{ color: "var(--text-1)" }}>
+                {googleStatus.googleEmail}
+              </span>
+              <span
+                style={{
+                  marginLeft: "auto",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "2px 8px",
+                  borderRadius: 99,
+                  background:
+                    "color-mix(in srgb, var(--success) 15%, transparent)",
+                  color: "var(--success)",
+                }}
+              >
+                ✓ Conectat
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Theme toggle */}
+      <div className="tt-rule" />
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div>
+          <div
+            style={{ fontSize: 13.5, fontWeight: 500, color: "var(--text-1)" }}
+          >
+            Temă {theme === "dark" ? "întunecată" : "luminoasă"}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+            Schimbă aspectul interfeței
+          </div>
+        </div>
+        <button
+          onClick={() => dispatch(toggleTheme())}
+          style={{
+            width: 44,
+            height: 26,
+            borderRadius: 13,
+            border: "none",
+            cursor: "pointer",
+            background: theme === "dark" ? "var(--accent)" : "var(--bg-muted)",
+            position: "relative",
+            transition: "background 200ms",
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: 3,
+              width: 20,
+              height: 20,
+              borderRadius: 10,
+              background: "white",
+              transition: "transform 200ms",
+              transform:
+                theme === "dark" ? "translateX(21px)" : "translateX(3px)",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+            }}
+          />
+        </button>
+      </div>
+
+      {/* Save/Cancel — doar în edit mode */}
+      {editing && (
+        <>
+          <div className="tt-rule" />
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              onClick={handleCancel}
+              className="tt-btn tt-btn-secondary"
+              style={{ flex: 1, height: 40, justifyContent: "center" }}
+            >
+              Anulează
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="tt-btn tt-btn-primary"
+              style={{
+                flex: 2,
+                height: 40,
+                justifyContent: "center",
+                opacity: saving ? 0.7 : 1,
+              }}
+            >
+              {saving ? "Se salvează..." : "Salvează modificările"}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 // ── Integrations Tab ──────────────────────────────────────────
 function IntegrationsTab() {
-  const queryClient = useQueryClient()
-  const location = useLocation()
+  const queryClient = useQueryClient();
+  const location = useLocation();
 
   const { data: googleStatus, isLoading } = useQuery({
-    queryKey: ['google-status'],
+    queryKey: ["google-status"],
     queryFn: googleApi.getStatus,
     retry: false,
-  })
+  });
 
   const disconnectMutation = useMutation({
     mutationFn: googleApi.disconnect,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['google-status'] }),
-  })
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["google-status"] }),
+  });
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    const googleResult = params.get('google')
-    if (googleResult === 'success') {
-      queryClient.invalidateQueries({ queryKey: ['google-status'] })
+    const hash = window.location.hash;
+    const queryString = hash.includes("?") ? hash.split("?")[1] : "";
+    const params = new URLSearchParams(queryString);
+    const googleResult = params.get("google");
+    if (googleResult === "success") {
+      queryClient.invalidateQueries({ queryKey: ["google-status"] });
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + "#/settings",
+      );
     }
-  }, [location.search])
+  }, []);
 
-  const IcGoogle = () => (
-    <svg width="18" height="18" viewBox="0 0 16 16">
-      <path d="M15.68 8.18c0-.57-.05-1.11-.14-1.64H8v3.1h4.31a3.68 3.68 0 0 1-1.6 2.42v2h2.6c1.52-1.4 2.4-3.46 2.4-5.88z" fill="#4285F4"/>
-      <path d="M8 16c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-2.7.75 4.79 4.79 0 0 1-4.5-3.32H.9v2.06A8 8 0 0 0 8 16z" fill="#34A853"/>
-      <path d="M3.5 9.49a4.83 4.83 0 0 1 0-3.08V4.35H.9a8 8 0 0 0 0 7.2l2.6-2.06z" fill="#FBBC05"/>
-      <path d="M8 3.18c1.23 0 2.33.42 3.2 1.25l2.4-2.4A8 8 0 0 0 .9 4.35L3.5 6.41A4.79 4.79 0 0 1 8 3.18z" fill="#EA4335"/>
-    </svg>
-  )
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("ro-RO", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
-  const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('ro-RO', {
-    day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
-  })
+  if (isLoading)
+    return (
+      <div
+        style={{
+          padding: "40px 0",
+          textAlign: "center",
+          color: "var(--text-3)",
+          fontSize: 13.5,
+        }}
+      >
+        Se încarcă...
+      </div>
+    );
 
-  if (isLoading) return (
-    <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 13.5 }}>
-      Se încarcă...
-    </div>
-  )
-
-  const connected = googleStatus?.connected ?? false
+  const connected = googleStatus?.connected ?? false;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{
-        borderRadius: 'var(--r-lg)',
-        border: connected
-          ? '1px solid color-mix(in srgb, var(--success) 30%, transparent)'
-          : '0.5px solid var(--border)',
-        background: 'var(--bg-input)',
-        overflow: 'hidden',
-      }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 20px' }}>
-          <div style={{
-            width: 46, height: 46, borderRadius: 'var(--r-md)',
-            background: 'var(--bg-card)', border: '0.5px solid var(--border)',
-            display: 'grid', placeItems: 'center', flexShrink: 0,
-            color: 'var(--accent)',
-          }}>
-            <IcCalendar />
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div
+        style={{
+          borderRadius: "var(--r-lg)",
+          border: connected
+            ? "1px solid color-mix(in srgb, var(--success) 30%, transparent)"
+            : "0.5px solid var(--border)",
+          background: "var(--bg-input)",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            padding: "18px 20px",
+          }}
+        >
+          <div
+            style={{
+              width: 46,
+              height: 46,
+              borderRadius: "var(--r-md)",
+              background: "white",
+              border: "0.5px solid var(--border)",
+              display: "grid",
+              placeItems: "center",
+              flexShrink: 0,
+            }}
+          >
+            <IcGoogle />
           </div>
-
           <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--text-1)' }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span
+                style={{
+                  fontSize: 14.5,
+                  fontWeight: 600,
+                  color: "var(--text-1)",
+                }}
+              >
                 Google Calendar
               </span>
               {connected && (
-                <span style={{
-                  fontSize: 11, fontWeight: 600, padding: '2px 8px',
-                  borderRadius: 99, background: 'var(--bg-success)',
-                  color: 'var(--text-success)',
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: "2px 8px",
+                    borderRadius: 99,
+                    background:
+                      "color-mix(in srgb, var(--success) 15%, transparent)",
+                    color: "var(--success)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
                   <IcCheck /> Conectat
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 12.5, color: 'var(--text-3)', marginTop: 3 }}>
+            <div
+              style={{ fontSize: 12.5, color: "var(--text-3)", marginTop: 3 }}
+            >
               {connected
                 ? `Cont conectat: ${googleStatus?.googleEmail}`
-                : 'Importă lecțiile programate automat din calendar'}
+                : "Importă lecțiile programate automat din calendar"}
             </div>
           </div>
-
           {connected ? (
             <button
               onClick={() => disconnectMutation.mutate()}
@@ -141,7 +502,9 @@ function IntegrationsTab() {
               className="tt-btn tt-btn-secondary"
               style={{ height: 34, fontSize: 13, flexShrink: 0 }}
             >
-              {disconnectMutation.isPending ? 'Se deconectează...' : 'Deconectează'}
+              {disconnectMutation.isPending
+                ? "Se deconectează..."
+                : "Deconectează"}
             </button>
           ) : (
             <button
@@ -153,85 +516,105 @@ function IntegrationsTab() {
             </button>
           )}
         </div>
-
-        {/* Connected details */}
         {connected && (
-          <div style={{
-            borderTop: '0.5px solid var(--border)',
-            padding: '12px 20px',
-            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
-          }}>
+          <div
+            style={{
+              borderTop: "0.5px solid var(--border)",
+              padding: "12px 20px",
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 12,
+            }}
+          >
             <div>
-              <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "var(--text-3)",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  marginBottom: 4,
+                }}
+              >
                 Ultima sincronizare
               </div>
-              <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+              <div style={{ fontSize: 13, color: "var(--text-2)" }}>
                 {googleStatus?.lastSyncedAt
                   ? fmtDate(googleStatus.lastSyncedAt)
-                  : 'Niciodată — importă prima lecție din pagina Lecții'}
+                  : "Niciodată — importă prima lecție din pagina Lecții"}
               </div>
             </div>
             <div>
-              <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "var(--text-3)",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  marginBottom: 4,
+                }}
+              >
                 Permisiuni
               </div>
-              <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+              <div style={{ fontSize: 13, color: "var(--text-2)" }}>
                 Citire și creare evenimente
               </div>
             </div>
           </div>
         )}
       </div>
-
       {!connected && (
-        <div style={{
-          padding: '14px 16px', background: 'var(--bg-input)',
-          borderRadius: 'var(--r-md)', border: '0.5px solid var(--border)',
-          fontSize: 13, color: 'var(--text-3)', lineHeight: 1.6,
-        }}>
-          <strong style={{ color: 'var(--text-2)' }}>Cum funcționează:</strong> După conectare, mergi la pagina{' '}
-          <strong style={{ color: 'var(--accent)' }}>Lecții</strong> și apasă butonul de import calendar.
-          TutorTrack va prelua evenimentele tale și le va mapa automat la studenți.
+        <div
+          style={{
+            padding: "14px 16px",
+            background: "var(--bg-input)",
+            borderRadius: "var(--r-md)",
+            border: "0.5px solid var(--border)",
+            fontSize: 13,
+            color: "var(--text-3)",
+            lineHeight: 1.6,
+          }}
+        >
+          <strong style={{ color: "var(--text-2)" }}>Cum funcționează:</strong>{" "}
+          După conectare, mergi la pagina{" "}
+          <strong style={{ color: "var(--accent)" }}>Lecții</strong> și apasă
+          butonul de import calendar.
         </div>
       )}
     </div>
-  )
+  );
 }
 
 // ── Main Settings Page ────────────────────────────────────────
 export default function SettingsPage() {
-  const dispatch = useDispatch<AppDispatch>()
-  const navigate = useNavigate()
-  const profile  = useSelector((s: RootState) => s.profile)
-  const theme    = useSelector((s: RootState) => s.ui.theme)
+  const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
+  const profile = useSelector((s: RootState) => s.profile);
 
-  const [tab, setTab]           = useState<Tab>("profile")
-  const [saved, setSaved]       = useState(false)
+  const [tab, setTab] = useState<Tab>("profile");
+  const [saved, setSaved] = useState(false);
   const [form, setForm] = useState({
-    name:            profile.name,
-    email:           profile.email,
-    phone:           profile.phone,
-    defaultPrice60:  profile.defaultPrice60,
-    defaultPrice90:  profile.defaultPrice90,
+    defaultPrice60: profile.defaultPrice60,
+    defaultPrice90: profile.defaultPrice90,
     defaultPrice120: profile.defaultPrice120,
-    currency:        profile.currency,
-  })
+    currency: profile.currency,
+  });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setForm(prev => ({
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({
       ...prev,
-      [name]: ["defaultPrice60","defaultPrice90","defaultPrice120"].includes(name)
-        ? Number(value) : value,
-    }))
-  }
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault()
-    dispatch(updateProfile(form))
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
+      [name]: ["defaultPrice60", "defaultPrice90", "defaultPrice120"].includes(
+        name,
+      )
+        ? Number(value)
+        : value,
+    }));
+  };
 
   const handleExport = async () => {
     try {
@@ -239,32 +622,38 @@ export default function SettingsPage() {
         studentsApi.getAll(1000),
         lessonsApi.getAll(1000),
         paymentsApi.getAll(1000),
-      ])
+      ]);
       const blob = new Blob(
-        [JSON.stringify({
-          profile,
-          students: studentsRes.data,
-          lessons: lessonsRes.data,
-          payments: paymentsRes.data,
-          exportedAt: new Date().toISOString(),
-        }, null, 2)],
+        [
+          JSON.stringify(
+            {
+              profile,
+              students: studentsRes.data,
+              lessons: lessonsRes.data,
+              payments: paymentsRes.data,
+              exportedAt: new Date().toISOString(),
+            },
+            null,
+            2,
+          ),
+        ],
         { type: "application/json" },
-      )
-      const a = document.createElement("a")
-      a.href = URL.createObjectURL(blob)
-      a.download = `tutor-track-backup-${new Date().toISOString().slice(0, 10)}.json`
-      a.click()
-      URL.revokeObjectURL(a.href)
+      );
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `tutor-track-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
     } catch {
-      alert("Export eșuat. Încearcă din nou.")
+      alert("Export eșuat.");
     }
-  }
+  };
 
   const handleClearAll = async () => {
-    if (!confirm("Sigur vrei să resetezi sesiunea?")) return
-    dispatch(clearProfile())
-    navigate("/login")
-  }
+    if (!confirm("Sigur vrei să resetezi sesiunea?")) return;
+    dispatch(clearProfile());
+    navigate("/login");
+  };
 
   return (
     <div style={{ padding: "28px 36px 60px", maxWidth: 1100 }}>
@@ -273,24 +662,49 @@ export default function SettingsPage() {
         <p className="tt-page-sub">Profilul tău, prețuri și integrări</p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 28, alignItems: "start" }}>
-
-        {/* Left tab nav */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "200px 1fr",
+          gap: 28,
+          alignItems: "start",
+        }}
+      >
+        {/* Left nav */}
         <nav style={{ display: "flex", flexDirection: "column", gap: 1 }}>
           {TABS.map(({ key, label }) => (
             <button
               key={key}
               onClick={() => setTab(key)}
               style={{
-                padding: "8px 12px", borderRadius: 8, textAlign: "left",
-                fontSize: 13.5, fontWeight: tab === key ? 600 : 500,
+                padding: "8px 12px",
+                borderRadius: 8,
+                textAlign: "left",
+                fontSize: 13.5,
+                fontWeight: tab === key ? 600 : 500,
                 background: tab === key ? "var(--accent-soft)" : "transparent",
                 color: tab === key ? "var(--accent)" : "var(--text-2)",
-                border: "none", cursor: "pointer",
-                fontFamily: "var(--font-text)", transition: "all 120ms",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "var(--font-text)",
+                transition: "all 120ms",
               }}
-              onMouseEnter={e => { if (tab !== key) { (e.currentTarget as HTMLElement).style.background = "var(--bg-card-hover)"; (e.currentTarget as HTMLElement).style.color = "var(--text-1)" } }}
-              onMouseLeave={e => { if (tab !== key) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-2)" } }}
+              onMouseEnter={(e) => {
+                if (tab !== key) {
+                  (e.currentTarget as HTMLElement).style.background =
+                    "var(--bg-card-hover)";
+                  (e.currentTarget as HTMLElement).style.color =
+                    "var(--text-1)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (tab !== key) {
+                  (e.currentTarget as HTMLElement).style.background =
+                    "transparent";
+                  (e.currentTarget as HTMLElement).style.color =
+                    "var(--text-2)";
+                }
+              }}
             >
               {label}
             </button>
@@ -299,59 +713,28 @@ export default function SettingsPage() {
 
         {/* Right content */}
         <div className="tt-card" style={{ padding: 28 }}>
+          {tab === "profile" && <ProfileTab />}
 
-          {/* Profil */}
-          {tab === "profile" && (
-            <form onSubmit={handleSave} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label className="tt-label">Nume complet</label>
-                <input name="name" value={form.name} onChange={handleChange} className="tt-input" />
-              </div>
-              <div>
-                <label className="tt-label">Email</label>
-                <input name="email" type="email" value={form.email} onChange={handleChange} className="tt-input" />
-              </div>
-              <div>
-                <label className="tt-label">Telefon</label>
-                <input name="phone" value={form.phone} onChange={handleChange} className="tt-input" />
-              </div>
-              <div style={{ gridColumn: "1 / -1", paddingTop: 4, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <button type="submit" className="tt-btn tt-btn-primary" style={{ height: 38 }}>
-                  {saved ? <><IcCheck /> Salvat!</> : "Salvează modificările"}
-                </button>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontSize: 13, color: "var(--text-2)" }}>
-                    Temă {theme === "dark" ? "întunecată" : "luminoasă"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => dispatch(toggleTheme())}
-                    style={{
-                      width: 42, height: 24, borderRadius: 12, border: "none", cursor: "pointer",
-                      background: theme === "dark" ? "var(--accent)" : "var(--bg-muted)",
-                      position: "relative", transition: "background 200ms", flexShrink: 0,
-                    }}
-                  >
-                    <div style={{
-                      position: "absolute", top: 2, width: 20, height: 20,
-                      borderRadius: 10, background: "white", transition: "transform 200ms",
-                      transform: theme === "dark" ? "translateX(20px)" : "translateX(2px)",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-                    }} />
-                  </button>
-                </div>
-              </div>
-            </form>
-          )}
-
-          {/* Prețuri */}
           {tab === "prices" && (
             <div>
-              <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 0, marginBottom: 18 }}>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: "var(--text-2)",
+                  marginTop: 0,
+                  marginBottom: 18,
+                }}
+              >
                 Prețuri implicite la crearea unei lecții
               </p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
-                {([60, 90, 120] as const).map(min => (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: 14,
+                }}
+              >
+                {([60, 90, 120] as const).map((min) => (
                   <div key={min}>
                     <label className="tt-label">{min} minute</label>
                     <div style={{ position: "relative" }}>
@@ -363,7 +746,18 @@ export default function SettingsPage() {
                         className="tt-input tabular"
                         style={{ paddingRight: 50 }}
                       />
-                      <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--text-3)", fontWeight: 500, pointerEvents: "none" }}>
+                      <span
+                        style={{
+                          position: "absolute",
+                          right: 12,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          fontSize: 12,
+                          color: "var(--text-3)",
+                          fontWeight: 500,
+                          pointerEvents: "none",
+                        }}
+                      >
                         {form.currency}
                       </span>
                     </div>
@@ -372,7 +766,13 @@ export default function SettingsPage() {
               </div>
               <div style={{ marginTop: 18 }}>
                 <label className="tt-label">Monedă</label>
-                <select name="currency" value={form.currency} onChange={handleChange} className="tt-input" style={{ maxWidth: 260 }}>
+                <select
+                  name="currency"
+                  value={form.currency}
+                  onChange={handleChange}
+                  className="tt-input"
+                  style={{ maxWidth: 260 }}
+                >
                   <option value="MDL">MDL — Leu moldovenesc</option>
                   <option value="USD">USD — Dolar american</option>
                   <option value="EUR">EUR — Euro</option>
@@ -380,56 +780,125 @@ export default function SettingsPage() {
               </div>
               <div style={{ marginTop: 20 }}>
                 <button
-                  onClick={e => { e.preventDefault(); dispatch(updateProfile(form)); setSaved(true); setTimeout(() => setSaved(false), 2000) }}
-                  className="tt-btn tt-btn-primary" style={{ height: 38 }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    dispatch(updateProfile(form));
+                    setSaved(true);
+                    setTimeout(() => setSaved(false), 2000);
+                  }}
+                  className="tt-btn tt-btn-primary"
+                  style={{ height: 38 }}
                 >
-                  {saved ? <><IcCheck /> Salvat!</> : "Salvează prețurile"}
+                  {saved ? (
+                    <>
+                      <IcCheck /> Salvat!
+                    </>
+                  ) : (
+                    "Salvează prețurile"
+                  )}
                 </button>
               </div>
             </div>
           )}
 
-          {/* Integrări */}
-          {tab === "integrations" && (
-            <IntegrationsTab />
-          )}
+          {tab === "integrations" && <IntegrationsTab />}
 
-          {/* Date */}
           {tab === "data" && (
             <div>
-              <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 0, marginBottom: 18 }}>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: "var(--text-2)",
+                  marginTop: 0,
+                  marginBottom: 18,
+                }}
+              >
                 Exportă datele tale din baza de date
               </p>
               <div style={{ display: "flex", gap: 10, marginBottom: 32 }}>
-                <button onClick={handleExport} className="tt-btn tt-btn-secondary" style={{ height: 36, gap: 7 }}>
+                <button
+                  onClick={handleExport}
+                  className="tt-btn tt-btn-secondary"
+                  style={{ height: 36, gap: 7 }}
+                >
                   <IcDownload /> Exportă JSON
                 </button>
               </div>
-              <div style={{
-                padding: 18, borderRadius: "var(--r-md)",
-                background: "var(--danger-soft)",
-                border: "0.5px solid color-mix(in srgb, var(--danger) 20%, transparent)",
-              }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--danger)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
+              <div
+                style={{
+                  padding: 18,
+                  borderRadius: "var(--r-md)",
+                  background: "var(--danger-soft)",
+                  border:
+                    "0.5px solid color-mix(in srgb, var(--danger) 20%, transparent)",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--danger)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    marginBottom: 12,
+                  }}
+                >
                   Zonă periculoasă
                 </div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 16,
+                  }}
+                >
                   <div>
-                    <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--text-1)" }}>Resetează sesiunea</div>
-                    <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Curăță profilul local și mergi la login</div>
+                    <div
+                      style={{
+                        fontSize: 13.5,
+                        fontWeight: 500,
+                        color: "var(--text-1)",
+                      }}
+                    >
+                      Resetează sesiunea
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "var(--text-3)",
+                        marginTop: 2,
+                      }}
+                    >
+                      Curăță profilul local și mergi la login
+                    </div>
                   </div>
                   <button
                     onClick={handleClearAll}
                     style={{
-                      height: 32, padding: "0 14px", borderRadius: "var(--r-md)",
-                      background: "var(--danger-soft)", color: "var(--danger-strong)",
-                      border: "0.5px solid color-mix(in srgb, var(--danger) 30%, transparent)",
-                      fontSize: 12.5, fontWeight: 500, cursor: "pointer",
-                      display: "flex", alignItems: "center", gap: 6,
-                      flexShrink: 0, fontFamily: "var(--font-text)", transition: "opacity 120ms",
+                      height: 32,
+                      padding: "0 14px",
+                      borderRadius: "var(--r-md)",
+                      background: "var(--danger-soft)",
+                      color: "var(--danger-strong)",
+                      border:
+                        "0.5px solid color-mix(in srgb, var(--danger) 30%, transparent)",
+                      fontSize: 12.5,
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      flexShrink: 0,
+                      fontFamily: "var(--font-text)",
+                      transition: "opacity 120ms",
                     }}
-                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = "0.75"}
-                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = "1"}
+                    onMouseEnter={(e) =>
+                      ((e.currentTarget as HTMLElement).style.opacity = "0.75")
+                    }
+                    onMouseLeave={(e) =>
+                      ((e.currentTarget as HTMLElement).style.opacity = "1")
+                    }
                   >
                     <IcTrash /> Resetează
                   </button>
@@ -440,5 +909,5 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
