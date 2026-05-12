@@ -2,22 +2,14 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toggleSidebar, toggleTheme } from "@/store/slices/uiSlice";
+import { clearAuth } from "@/store/slices/authSlice";
+import { clearToken } from "@/lib/api";
 import { getInitials } from "@/lib/dateUtils";
 import type { RootState, AppDispatch } from "@/store";
 
-// ── Icons ────────────────────────────────────────────────────
 const Ic = {
   Dashboard: () => (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="7" height="7" rx="1.5" />
       <rect x="14" y="3" width="7" height="7" rx="1.5" />
       <rect x="3" y="14" width="7" height="7" rx="1.5" />
@@ -25,16 +17,7 @@ const Ic = {
     </svg>
   ),
   Students: () => (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
@@ -42,46 +25,19 @@ const Ic = {
     </svg>
   ),
   Lessons: () => (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
       <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
     </svg>
   ),
   Payments: () => (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2" y="5" width="20" height="14" rx="2" />
       <line x1="2" y1="10" x2="22" y2="10" />
     </svg>
   ),
   Reports: () => (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <polyline points="14 2 14 8 20 8" />
       <line x1="16" y1="13" x2="8" y2="13" />
@@ -89,157 +45,75 @@ const Ic = {
     </svg>
   ),
   Statistics: () => (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <line x1="18" y1="20" x2="18" y2="10" />
       <line x1="12" y1="20" x2="12" y2="4" />
       <line x1="6" y1="20" x2="6" y2="14" />
     </svg>
   ),
   Settings: () => (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
   ),
   Sun: () => (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="4" />
       <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
     </svg>
   ),
   Moon: () => (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
     </svg>
   ),
   Menu: () => (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    >
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <line x1="3" y1="12" x2="21" y2="12" />
       <line x1="3" y1="6" x2="21" y2="6" />
       <line x1="3" y1="18" x2="21" y2="18" />
     </svg>
   ),
   Close: () => (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    >
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   ),
   ChevronsLeft: () => (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="11 17 6 12 11 7" />
       <polyline points="18 17 13 12 18 7" />
     </svg>
   ),
   Plus: () => (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-    >
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  ),
+  Logout: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   ),
 };
 
 const navItems = [
   { path: "/dashboard", label: "Dashboard", Icon: Ic.Dashboard },
-  { path: "/students", label: "Studenți", Icon: Ic.Students },
-  { path: "/lessons", label: "Lecții", Icon: Ic.Lessons },
-  { path: "/payments", label: "Plăți", Icon: Ic.Payments },
-  { path: "/reports", label: "Rapoarte", Icon: Ic.Reports },
-  { path: "/statistics", label: "Statistici", Icon: Ic.Statistics },
-  { path: "/settings", label: "Setări", Icon: Ic.Settings },
+  { path: "/students",  label: "Studenți",  Icon: Ic.Students  },
+  { path: "/lessons",   label: "Lecții",    Icon: Ic.Lessons   },
+  { path: "/payments",  label: "Plăți",     Icon: Ic.Payments  },
+  { path: "/reports",   label: "Rapoarte",  Icon: Ic.Reports   },
+  { path: "/statistics",label: "Statistici",Icon: Ic.Statistics},
+  { path: "/settings",  label: "Setări",    Icon: Ic.Settings  },
 ];
 
-// ── Logo components ──────────────────────────────────────────
-
-/**
- * Full logo — shown when sidebar is expanded or in mobile header.
- * logo.png is 677×369 px (landscape). At height:40 it renders ~74×40px,
- * showing the compass icon + "TutorTrack" text in full.
- */
-const LogoFull = ({
-  height = 40,
-  onClick,
-}: {
-  height?: number;
-  onClick?: () => void;
-}) => (
-  <div
-    onClick={onClick}
-    style={{
-      cursor: onClick ? "pointer" : "default",
-      display: "flex",
-      alignItems: "center",
-    }}
-  >
+const LogoFull = ({ height = 40, onClick }: { height?: number; onClick?: () => void }) => (
+  <div onClick={onClick} style={{ cursor: onClick ? "pointer" : "default", display: "flex", alignItems: "center" }}>
     <img
       src={`${import.meta.env.BASE_URL}logo.png`}
       alt="TutorTrack"
@@ -262,18 +136,7 @@ const LogoMark = ({ onClick }: { onClick?: () => void }) => {
     <button
       onClick={onClick}
       title="Extinde bara"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 52,
-        height: 44,
-        border: "none",
-        cursor: onClick ? "pointer" : "default",
-        padding: 0,
-        background: "transparent",
-        flexShrink: 0,
-      }}
+      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 52, height: 44, border: "none", cursor: onClick ? "pointer" : "default", padding: 0, background: "transparent", flexShrink: 0 }}
     >
       <img
         src={`${import.meta.env.BASE_URL}logo-icon.png`}
@@ -299,11 +162,11 @@ export default function Layout({ children }: Props) {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const location = useLocation();
-  const profile = useSelector((s: RootState) => s.profile);
+  const profile  = useSelector((s: RootState) => s.profile);
   const { theme, sidebarOpen } = useSelector((s: RootState) => s.ui);
   const isDark = theme === "dark";
 
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isMobile, setIsMobile]   = useState(window.innerWidth < 768);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -318,45 +181,29 @@ export default function Layout({ children }: Props) {
 
   const showLabel = sidebarOpen || isMobile;
 
-  // ── Sidebar inner content ────────────────────────────────
+  const handleLogout = () => {
+    clearToken();
+    dispatch(clearAuth());
+    navigate("/login");
+  };
+
   const SidebarContent = () => (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+
       {/* Brand header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: showLabel ? "space-between" : "center",
-          padding: showLabel ? "12px 14px 12px 16px" : "12px 0",
-          height: 62,
-          flexShrink: 0,
-        }}
-      >
+      <div style={{
+        display: "flex", alignItems: "center",
+        justifyContent: showLabel ? "space-between" : "center",
+        padding: showLabel ? "12px 14px 12px 16px" : "12px 0",
+        height: 62, flexShrink: 0,
+      }}>
         {showLabel ? (
           <>
-            {/* Full logo — click navigates to dashboard */}
-            <LogoFull
-              height={40}
-              onClick={() => {
-                navigate("/dashboard");
-                setMobileOpen(false);
-              }}
-            />
-
-            {/* Collapse / close button */}
+            <LogoFull height={40} onClick={() => { navigate("/dashboard"); setMobileOpen(false); }} />
             {isMobile ? (
               <button
                 onClick={() => setMobileOpen(false)}
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 7,
-                  color: "var(--text-2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
+                style={{ width: 30, height: 30, borderRadius: 7, color: "var(--text-2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: "none", border: "none", cursor: "pointer" }}
               >
                 <Ic.Close />
               </button>
@@ -364,36 +211,15 @@ export default function Layout({ children }: Props) {
               <button
                 onClick={() => dispatch(toggleSidebar())}
                 title="Restrânge bara"
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 6,
-                  color: "var(--text-3)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  transition: "all 120ms",
-                  flexShrink: 0,
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.background =
-                    "var(--bg-card-hover)";
-                  (e.currentTarget as HTMLElement).style.color =
-                    "var(--text-1)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.background =
-                    "transparent";
-                  (e.currentTarget as HTMLElement).style.color =
-                    "var(--text-3)";
-                }}
+                style={{ width: 28, height: 28, borderRadius: 6, color: "var(--text-3)", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 120ms", flexShrink: 0, background: "none", border: "none", cursor: "pointer" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-card-hover)"; (e.currentTarget as HTMLElement).style.color = "var(--text-1)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-3)"; }}
               >
                 <Ic.ChevronsLeft />
               </button>
             )}
           </>
         ) : (
-          /* Collapsed sidebar — icon-only mark, click to expand */
           <LogoMark onClick={() => dispatch(toggleSidebar())} />
         )}
       </div>
@@ -403,12 +229,7 @@ export default function Layout({ children }: Props) {
         <button
           onClick={() => navigate("/lessons")}
           className="tt-btn tt-btn-primary"
-          style={{
-            width: "100%",
-            height: 34,
-            justifyContent: "center",
-            gap: 6,
-          }}
+          style={{ width: "100%", height: 34, justifyContent: "center", gap: 6 }}
         >
           <Ic.Plus />
           {showLabel && "Lecție nouă"}
@@ -418,8 +239,7 @@ export default function Layout({ children }: Props) {
       {/* Navigation */}
       <nav style={{ padding: showLabel ? "2px 10px" : "2px 8px", flex: 1 }}>
         {navItems.map(({ path, label, Icon }) => {
-          const isActive =
-            location.pathname === path ||
+          const isActive = location.pathname === path ||
             (path === "/students" && location.pathname.startsWith("/students"));
           return (
             <button
@@ -427,41 +247,19 @@ export default function Layout({ children }: Props) {
               onClick={() => navigate(path)}
               title={!showLabel ? label : undefined}
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                width: "100%",
-                padding: showLabel ? "8px 10px" : "9px",
-                marginBottom: 1,
-                borderRadius: 9,
+                display: "flex", alignItems: "center", gap: 10,
+                width: "100%", padding: showLabel ? "8px 10px" : "9px",
+                marginBottom: 1, borderRadius: 9,
                 justifyContent: showLabel ? "flex-start" : "center",
                 background: isActive ? "var(--accent-soft)" : "transparent",
                 color: isActive ? "var(--accent)" : "var(--text-2)",
-                fontSize: 13.5,
-                fontWeight: isActive ? 600 : 500,
-                letterSpacing: "-0.01em",
-                transition: "all 120ms ease",
-                cursor: "pointer",
-                border: "none",
-                fontFamily: "var(--font-text)",
-                whiteSpace: "nowrap",
+                fontSize: 13.5, fontWeight: isActive ? 600 : 500,
+                letterSpacing: "-0.01em", transition: "all 120ms ease",
+                cursor: "pointer", border: "none",
+                fontFamily: "var(--font-text)", whiteSpace: "nowrap",
               }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  (e.currentTarget as HTMLElement).style.background =
-                    "var(--bg-card-hover)";
-                  (e.currentTarget as HTMLElement).style.color =
-                    "var(--text-1)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  (e.currentTarget as HTMLElement).style.background =
-                    "transparent";
-                  (e.currentTarget as HTMLElement).style.color =
-                    "var(--text-2)";
-                }
-              }}
+              onMouseEnter={e => { if (!isActive) { (e.currentTarget as HTMLElement).style.background = "var(--bg-card-hover)"; (e.currentTarget as HTMLElement).style.color = "var(--text-1)"; } }}
+              onMouseLeave={e => { if (!isActive) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-2)"; } }}
             >
               <Icon />
               {showLabel && label}
@@ -476,222 +274,91 @@ export default function Layout({ children }: Props) {
           onClick={() => dispatch(toggleTheme())}
           title={isDark ? "Mod luminos" : "Mod întunecat"}
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            width: "100%",
-            padding: showLabel ? "8px 10px" : "9px",
-            borderRadius: 9,
-            color: "var(--text-2)",
-            fontSize: 13.5,
-            fontWeight: 500,
-            justifyContent: showLabel ? "flex-start" : "center",
-            transition: "all 120ms",
-            cursor: "pointer",
-            border: "none",
-            background: "transparent",
-            fontFamily: "var(--font-text)",
-            whiteSpace: "nowrap",
+            display: "flex", alignItems: "center", gap: 10,
+            width: "100%", padding: showLabel ? "8px 10px" : "9px",
+            borderRadius: 9, color: "var(--text-2)", fontSize: 13.5,
+            fontWeight: 500, justifyContent: showLabel ? "flex-start" : "center",
+            transition: "all 120ms", cursor: "pointer", border: "none",
+            background: "transparent", fontFamily: "var(--font-text)", whiteSpace: "nowrap",
           }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.background =
-              "var(--bg-card-hover)";
-            (e.currentTarget as HTMLElement).style.color = "var(--text-1)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.background = "transparent";
-            (e.currentTarget as HTMLElement).style.color = "var(--text-2)";
-          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-card-hover)"; (e.currentTarget as HTMLElement).style.color = "var(--text-1)"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-2)"; }}
         >
           {isDark ? <Ic.Sun /> : <Ic.Moon />}
           {showLabel && <span>{isDark ? "Mod luminos" : "Mod întunecat"}</span>}
         </button>
       </div>
 
-      {/* User card */}
-      <div
-        style={{
-          padding: showLabel ? "10px 12px" : "10px 8px",
-          borderTop: "0.5px solid var(--border)",
-          flexShrink: 0,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: showLabel ? "6px 8px" : 0,
-            borderRadius: 10,
-            justifyContent: showLabel ? "flex-start" : "center",
-          }}
-        >
-          <div
-            className="tt-avatar"
-            style={{ width: 30, height: 30, fontSize: 11, flexShrink: 0 }}
-          >
+      {/* User card + Logout */}
+      <div style={{ padding: showLabel ? "10px 12px" : "10px 8px", borderTop: "0.5px solid var(--border)", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: showLabel ? "6px 8px" : 0, borderRadius: 10, justifyContent: showLabel ? "flex-start" : "center" }}>
+          <div className="tt-avatar" style={{ width: 30, height: 30, fontSize: 11, flexShrink: 0 }}>
             {getInitials(profile.name || "T")}
           </div>
           {showLabel && (
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                style={{
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  color: "var(--text-1)",
-                  letterSpacing: "-0.01em",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {profile.name || "Tutor"}
+            <>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-1)", letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {profile.name || "Tutor"}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {profile.email || ""}
+                </div>
               </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "var(--text-3)",
-                  marginTop: 1,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
+              <button
+                onClick={handleLogout}
+                title="Deconectare"
+                style={{ width: 28, height: 28, borderRadius: 7, color: "var(--text-3)", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", cursor: "pointer", flexShrink: 0, transition: "all 120ms" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--danger-soft)"; (e.currentTarget as HTMLElement).style.color = "var(--danger)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-3)"; }}
               >
-                {profile.email || ""}
-              </div>
-            </div>
+                <Ic.Logout />
+              </button>
+            </>
           )}
         </div>
       </div>
+
     </div>
   );
 
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        overflow: "hidden",
-        background: "var(--bg-page)",
-      }}
-    >
-      {/* ── Mobile top bar ── */}
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "var(--bg-page)" }}>
+
+      {/* Mobile top bar */}
       {isMobile && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 100,
-            background: "var(--bg-card)",
-            borderBottom: "0.5px solid var(--border)",
-            height: 54,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "0 14px",
-          }}
-        >
-          <button
-            onClick={() => setMobileOpen(true)}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 8,
-              color: "var(--text-1)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)", height: 54, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 14px" }}>
+          <button onClick={() => setMobileOpen(true)} style={{ width: 36, height: 36, borderRadius: 8, color: "var(--text-1)", display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer" }}>
             <Ic.Menu />
           </button>
-
-          {/* Logo in mobile topbar — fixed height, click → dashboard */}
           <LogoFull height={28} onClick={() => navigate("/dashboard")} />
-
-          <button
-            onClick={() => dispatch(toggleTheme())}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 8,
-              color: "var(--text-2)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
+          <button onClick={() => dispatch(toggleTheme())} style={{ width: 36, height: 36, borderRadius: 8, color: "var(--text-2)", display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer" }}>
             {isDark ? <Ic.Sun /> : <Ic.Moon />}
           </button>
         </div>
       )}
 
-      {/* ── Mobile overlay ── */}
+      {/* Mobile overlay */}
       {isMobile && mobileOpen && (
-        <div
-          onClick={() => setMobileOpen(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "var(--bg-overlay)",
-            zIndex: 150,
-            backdropFilter: "blur(4px)",
-          }}
-        />
+        <div onClick={() => setMobileOpen(false)} style={{ position: "fixed", inset: 0, background: "var(--bg-overlay)", zIndex: 150, backdropFilter: "blur(4px)" }} />
       )}
 
-      {/* ── Mobile drawer ── */}
+      {/* Mobile drawer */}
       {isMobile && (
-        <aside
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            bottom: 0,
-            zIndex: 200,
-            width: 260,
-            background: "var(--bg-card)",
-            borderRight: "0.5px solid var(--border)",
-            transform: mobileOpen ? "translateX(0)" : "translateX(-100%)",
-            transition: "transform 240ms cubic-bezier(.2,.7,.3,1)",
-            boxShadow: mobileOpen ? "var(--shadow-modal)" : "none",
-          }}
-        >
+        <aside style={{ position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 200, width: 260, background: "var(--bg-card)", borderRight: "0.5px solid var(--border)", transform: mobileOpen ? "translateX(0)" : "translateX(-100%)", transition: "transform 240ms cubic-bezier(.2,.7,.3,1)", boxShadow: mobileOpen ? "var(--shadow-modal)" : "none" }}>
           <SidebarContent />
         </aside>
       )}
 
-      {/* ── Desktop sidebar ── */}
+      {/* Desktop sidebar */}
       {!isMobile && (
-        <aside
-          style={{
-            width: sidebarOpen ? 220 : 64,
-            height: "100vh",
-            background: "var(--bg-card)",
-            borderRight: "0.5px solid var(--border)",
-            display: "flex",
-            flexDirection: "column",
-            transition: "width 200ms ease",
-            flexShrink: 0,
-            overflow: "hidden",
-          }}
-        >
+        <aside style={{ width: sidebarOpen ? 220 : 64, height: "100vh", background: "var(--bg-card)", borderRight: "0.5px solid var(--border)", display: "flex", flexDirection: "column", transition: "width 200ms ease", flexShrink: 0, overflow: "hidden" }}>
           <SidebarContent />
         </aside>
       )}
 
-      {/* ── Main content ── */}
-      <main
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          height: "100vh",
-          background: "var(--bg-page)",
-          paddingTop: isMobile ? 54 : 0,
-        }}
-      >
+      {/* Main content */}
+      <main style={{ flex: 1, overflowY: "auto", height: "100vh", background: "var(--bg-page)", paddingTop: isMobile ? 54 : 0 }}>
         {children}
       </main>
     </div>
