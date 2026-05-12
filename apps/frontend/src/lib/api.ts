@@ -1,49 +1,53 @@
-import axios from 'axios';
+import axios from 'axios'
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api'
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
   timeout: 10_000,
-});
+})
 
-// ── Request interceptor — atașează JWT la fiecare request ──
+// ── Request interceptor ──────────────────────────────────────
 apiClient.interceptors.request.use(
   (config) => {
-    const token = getToken();
+    const token = getToken()
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`
     }
-    return config;
+    return config
   },
   (error) => Promise.reject(error),
-);
+)
 
-// ── Response interceptor — handling global erori ──
+// ── Response interceptor ─────────────────────────────────────
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expirat — curăță sesiunea și redirect la login
-      clearToken();
-      window.location.href = '/tutor-track/#/login';
+      clearToken()
+      // Import dinamic ca să evităm circular dependency cu store
+      import('@/store').then(({ store }) => {
+        import('@/store/slices/authSlice').then(({ clearAuth }) => {
+          store.dispatch(clearAuth())
+        })
+      })
+      window.location.href = '/tutor-track/#/login'
     }
-    return Promise.reject(error);
+    return Promise.reject(error)
   },
-);
+)
 
-// ── Token management — în memorie, NU în localStorage ──
-let _token: string | null = null;
+const TOKEN_KEY = 'tt_access_token'
 
 export function setToken(token: string) {
-  _token = token;
+  sessionStorage.setItem(TOKEN_KEY, token)
 }
 
 export function getToken(): string | null {
-  return _token;
+  return sessionStorage.getItem(TOKEN_KEY)
 }
 
 export function clearToken() {
-  _token = null;
+  sessionStorage.removeItem(TOKEN_KEY)
 }

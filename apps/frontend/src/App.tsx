@@ -1,8 +1,9 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { loadProfileFromStorage } from '@/store/slices/profileSlice'
+import { setAuth } from '@/store/slices/authSlice'
+import { getToken, apiClient } from '@/lib/api'
 import type { AppDispatch, RootState } from '@/store'
 import Layout from '@/components/ui/Layout'
 import OnboardingPage from '@/pages/OnboardingPage'
@@ -23,10 +24,42 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 function App() {
   const dispatch = useDispatch<AppDispatch>()
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
     dispatch(loadProfileFromStorage())
+
+    const token = getToken()
+    if (token) {
+      // Token există în sessionStorage — restaurează sesiunea
+      apiClient.get('/auth/me')
+        .then(({ data }) => {
+          dispatch(setAuth({ user: data, token }))
+        })
+        .catch(() => {
+          // Token invalid sau expirat — curăță
+          import('@/lib/api').then(({ clearToken }) => clearToken())
+        })
+        .finally(() => setReady(true))
+    } else {
+      setReady(true)
+    }
   }, [dispatch])
+
+  // Așteaptă verificarea tokenului înainte de render
+  if (!ready) {
+    return (
+      <div style={{
+        height: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--bg-page)',
+      }}>
+        <div style={{ fontSize: 13, color: 'var(--text-3)' }}>Se încarcă...</div>
+      </div>
+    )
+  }
 
   return (
     <HashRouter>
@@ -41,7 +74,7 @@ function App() {
         <Route path="/reports" element={<RequireAuth><Layout><ReportsPage /></Layout></RequireAuth>} />
         <Route path="/statistics" element={<RequireAuth><Layout><StatisticsPage /></Layout></RequireAuth>} />
         <Route path="/settings" element={<RequireAuth><Layout><SettingsPage /></Layout></RequireAuth>} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </HashRouter>
   )
