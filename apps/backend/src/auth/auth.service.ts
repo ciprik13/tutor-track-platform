@@ -3,13 +3,13 @@ import {
   UnauthorizedException,
   ConflictException,
   ForbiddenException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../prisma/prisma.service';
-import * as bcrypt from 'bcrypt';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { GetTokenDto } from './dto/get-token.dto';
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { PrismaService } from "../prisma/prisma.service";
+import * as bcrypt from "bcrypt";
+import { RegisterDto } from "./dto/register.dto";
+import { LoginDto } from "./dto/login.dto";
+import { GetTokenDto } from "./dto/get-token.dto";
 
 export interface JwtPayload {
   sub: string;
@@ -28,23 +28,27 @@ export class AuthService {
   ) {}
 
   // ── Lab only ──────────────────────────────────────────────
-  async getToken(dto: GetTokenDto): Promise<{ access_token: string; expires_in: string }> {
+  async getToken(
+    dto: GetTokenDto,
+  ): Promise<{ access_token: string; expires_in: string }> {
     const payload: JwtPayload = {
       sub: dto.sub,
       name: dto.name,
       role: dto.role,
     };
     const access_token = await this.jwtService.signAsync(payload);
-    return { access_token, expires_in: '1h' };
+    return { access_token, expires_in: "1h" };
   }
 
   // ── Register ──────────────────────────────────────────────
-  async register(dto: RegisterDto): Promise<{ access_token: string; user: any }> {
+  async register(
+    dto: RegisterDto,
+  ): Promise<{ access_token: string; user: any }> {
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
     if (existing) {
-      throw new ConflictException('An account with this email already exists');
+      throw new ConflictException("An account with this email already exists");
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
@@ -55,8 +59,8 @@ export class AuthService {
         name: dto.name,
         phone: dto.phone,
         passwordHash,
-        role: 'TUTOR',
-        status: 'ACTIVE', // auto-approve pentru MVP
+        role: "TUTOR",
+        status: "ACTIVE", // auto-approve pentru MVP
       },
       select: {
         id: true,
@@ -80,16 +84,16 @@ export class AuthService {
     });
 
     if (!user || !user.passwordHash) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException("Invalid email or password");
     }
 
     const isValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isValid) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException("Invalid email or password");
     }
 
-    if (user.status === 'SUSPENDED') {
-      throw new ForbiddenException('Your account has been suspended');
+    if (user.status === "SUSPENDED") {
+      throw new ForbiddenException("Your account has been suspended");
     }
 
     const access_token = await this.signToken(user);
@@ -123,7 +127,7 @@ export class AuthService {
         createdAt: true,
       },
     });
-    if (!user) throw new UnauthorizedException('User not found');
+    if (!user) throw new UnauthorizedException("User not found");
     return user;
   }
 
@@ -132,12 +136,38 @@ export class AuthService {
     try {
       return await this.jwtService.verifyAsync<JwtPayload>(token);
     } catch {
-      throw new UnauthorizedException('Invalid or expired token');
+      throw new UnauthorizedException("Invalid or expired token");
     }
   }
 
+  async updateMe(userId: string, dto: { name?: string; phone?: string }) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.name && { name: dto.name }),
+        ...(dto.phone !== undefined && { phone: dto.phone }),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        status: true,
+        phone: true,
+        avatarUrl: true,
+        timezone: true,
+        createdAt: true,
+      },
+    });
+  }
+
   // ── Private ───────────────────────────────────────────────
-  private async signToken(user: { id: string; email: string; name: string; role: string }) {
+  private async signToken(user: {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+  }) {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
