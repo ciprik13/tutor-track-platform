@@ -1,28 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useLocation } from "react-router-dom";
 import { updateProfile, clearProfile } from "@/store/slices/profileSlice";
 import { toggleTheme } from "@/store/slices/uiSlice";
 import type { RootState, AppDispatch } from "@/store";
 import { useNavigate } from "react-router-dom";
-import { requestCalendarToken } from "@/lib/oauth";
 import { studentsApi } from "@/lib/studentsApi";
 import { lessonsApi } from "@/lib/lessonsApi";
 import { paymentsApi } from "@/lib/paymentsApi";
+import { googleApi } from "@/lib/googleApi";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-const IcGoogle = () => (
-  <svg width="15" height="15" viewBox="0 0 16 16">
-    <path d="M15.68 8.18c0-.57-.05-1.11-.14-1.64H8v3.1h4.31a3.68 3.68 0 0 1-1.6 2.42v2h2.6c1.52-1.4 2.4-3.46 2.4-5.88z" fill="#4285F4"/>
-    <path d="M8 16c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-2.7.75 4.79 4.79 0 0 1-4.5-3.32H.9v2.06A8 8 0 0 0 8 16z" fill="#34A853"/>
-    <path d="M3.5 9.49a4.83 4.83 0 0 1 0-3.08V4.35H.9a8 8 0 0 0 0 7.2l2.6-2.06z" fill="#FBBC05"/>
-    <path d="M8 3.18c1.23 0 2.33.42 3.2 1.25l2.4-2.4A8 8 0 0 0 .9 4.35L3.5 6.41A4.79 4.79 0 0 1 8 3.18z" fill="#EA4335"/>
-  </svg>
-)
-const IcCalendar = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
-    <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-  </svg>
-)
 const IcCheck = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="20 6 9 17 4 12"/>
@@ -41,6 +29,12 @@ const IcTrash = () => (
     <path d="M10 11v6M14 11v6"/>
   </svg>
 )
+const IcCalendar = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+    <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+  </svg>
+)
 
 type Tab = "profile" | "prices" | "integrations" | "data";
 
@@ -51,15 +45,168 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "data",         label: "Date"      },
 ];
 
-export default function SettingsPage() {
-  const dispatch = useDispatch<AppDispatch>();
-  const navigate = useNavigate();
-  const profile  = useSelector((s: RootState) => s.profile);
-  const theme    = useSelector((s: RootState) => s.ui.theme);
+// ── Integrations Tab ──────────────────────────────────────────
+function IntegrationsTab() {
+  const queryClient = useQueryClient()
+  const location = useLocation()
 
-  const [tab, setTab]             = useState<Tab>("profile");
-  const [connecting, setConnecting] = useState(false);
-  const [saved, setSaved]         = useState(false);
+  const { data: googleStatus, isLoading } = useQuery({
+    queryKey: ['google-status'],
+    queryFn: googleApi.getStatus,
+    retry: false,
+  })
+
+  const disconnectMutation = useMutation({
+    mutationFn: googleApi.disconnect,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['google-status'] }),
+  })
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const googleResult = params.get('google')
+    if (googleResult === 'success') {
+      queryClient.invalidateQueries({ queryKey: ['google-status'] })
+    }
+  }, [location.search])
+
+  const IcGoogle = () => (
+    <svg width="18" height="18" viewBox="0 0 16 16">
+      <path d="M15.68 8.18c0-.57-.05-1.11-.14-1.64H8v3.1h4.31a3.68 3.68 0 0 1-1.6 2.42v2h2.6c1.52-1.4 2.4-3.46 2.4-5.88z" fill="#4285F4"/>
+      <path d="M8 16c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-2.7.75 4.79 4.79 0 0 1-4.5-3.32H.9v2.06A8 8 0 0 0 8 16z" fill="#34A853"/>
+      <path d="M3.5 9.49a4.83 4.83 0 0 1 0-3.08V4.35H.9a8 8 0 0 0 0 7.2l2.6-2.06z" fill="#FBBC05"/>
+      <path d="M8 3.18c1.23 0 2.33.42 3.2 1.25l2.4-2.4A8 8 0 0 0 .9 4.35L3.5 6.41A4.79 4.79 0 0 1 8 3.18z" fill="#EA4335"/>
+    </svg>
+  )
+
+  const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('ro-RO', {
+    day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
+
+  if (isLoading) return (
+    <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 13.5 }}>
+      Se încarcă...
+    </div>
+  )
+
+  const connected = googleStatus?.connected ?? false
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{
+        borderRadius: 'var(--r-lg)',
+        border: connected
+          ? '1px solid color-mix(in srgb, var(--success) 30%, transparent)'
+          : '0.5px solid var(--border)',
+        background: 'var(--bg-input)',
+        overflow: 'hidden',
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 20px' }}>
+          <div style={{
+            width: 46, height: 46, borderRadius: 'var(--r-md)',
+            background: 'var(--bg-card)', border: '0.5px solid var(--border)',
+            display: 'grid', placeItems: 'center', flexShrink: 0,
+            color: 'var(--accent)',
+          }}>
+            <IcCalendar />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--text-1)' }}>
+                Google Calendar
+              </span>
+              {connected && (
+                <span style={{
+                  fontSize: 11, fontWeight: 600, padding: '2px 8px',
+                  borderRadius: 99, background: 'var(--bg-success)',
+                  color: 'var(--text-success)',
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                }}>
+                  <IcCheck /> Conectat
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-3)', marginTop: 3 }}>
+              {connected
+                ? `Cont conectat: ${googleStatus?.googleEmail}`
+                : 'Importă lecțiile programate automat din calendar'}
+            </div>
+          </div>
+
+          {connected ? (
+            <button
+              onClick={() => disconnectMutation.mutate()}
+              disabled={disconnectMutation.isPending}
+              className="tt-btn tt-btn-secondary"
+              style={{ height: 34, fontSize: 13, flexShrink: 0 }}
+            >
+              {disconnectMutation.isPending ? 'Se deconectează...' : 'Deconectează'}
+            </button>
+          ) : (
+            <button
+              onClick={() => googleApi.connect()}
+              className="tt-btn tt-btn-secondary"
+              style={{ height: 34, fontSize: 13, gap: 8, flexShrink: 0 }}
+            >
+              <IcGoogle /> Conectează cu Google
+            </button>
+          )}
+        </div>
+
+        {/* Connected details */}
+        {connected && (
+          <div style={{
+            borderTop: '0.5px solid var(--border)',
+            padding: '12px 20px',
+            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+          }}>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                Ultima sincronizare
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+                {googleStatus?.lastSyncedAt
+                  ? fmtDate(googleStatus.lastSyncedAt)
+                  : 'Niciodată — importă prima lecție din pagina Lecții'}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                Permisiuni
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+                Citire și creare evenimente
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {!connected && (
+        <div style={{
+          padding: '14px 16px', background: 'var(--bg-input)',
+          borderRadius: 'var(--r-md)', border: '0.5px solid var(--border)',
+          fontSize: 13, color: 'var(--text-3)', lineHeight: 1.6,
+        }}>
+          <strong style={{ color: 'var(--text-2)' }}>Cum funcționează:</strong> După conectare, mergi la pagina{' '}
+          <strong style={{ color: 'var(--accent)' }}>Lecții</strong> și apasă butonul de import calendar.
+          TutorTrack va prelua evenimentele tale și le va mapa automat la studenți.
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Main Settings Page ────────────────────────────────────────
+export default function SettingsPage() {
+  const dispatch = useDispatch<AppDispatch>()
+  const navigate = useNavigate()
+  const profile  = useSelector((s: RootState) => s.profile)
+  const theme    = useSelector((s: RootState) => s.ui.theme)
+
+  const [tab, setTab]           = useState<Tab>("profile")
+  const [saved, setSaved]       = useState(false)
   const [form, setForm] = useState({
     name:            profile.name,
     email:           profile.email,
@@ -68,23 +215,23 @@ export default function SettingsPage() {
     defaultPrice90:  profile.defaultPrice90,
     defaultPrice120: profile.defaultPrice120,
     currency:        profile.currency,
-  });
+  })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    const { name, value } = e.target
     setForm(prev => ({
       ...prev,
       [name]: ["defaultPrice60","defaultPrice90","defaultPrice120"].includes(name)
         ? Number(value) : value,
-    }));
-  };
+    }))
+  }
 
   const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    dispatch(updateProfile(form));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
+    e.preventDefault()
+    dispatch(updateProfile(form))
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
 
   const handleExport = async () => {
     try {
@@ -92,7 +239,7 @@ export default function SettingsPage() {
         studentsApi.getAll(1000),
         lessonsApi.getAll(1000),
         paymentsApi.getAll(1000),
-      ]);
+      ])
       const blob = new Blob(
         [JSON.stringify({
           profile,
@@ -102,28 +249,25 @@ export default function SettingsPage() {
           exportedAt: new Date().toISOString(),
         }, null, 2)],
         { type: "application/json" },
-      );
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `tutor-track-backup-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(a.href);
+      )
+      const a = document.createElement("a")
+      a.href = URL.createObjectURL(blob)
+      a.download = `tutor-track-backup-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(a.href)
     } catch {
-      alert("Export eșuat. Încearcă din nou.");
+      alert("Export eșuat. Încearcă din nou.")
     }
-  };
+  }
 
   const handleClearAll = async () => {
-    if (!confirm("Sigur vrei să ștergi TOATE datele? Această acțiune nu poate fi anulată!")) return;
-    if (!confirm("Ești absolut sigur? Toate lecțiile, studenții și plățile vor fi șterse!")) return;
-    dispatch(clearProfile());
-    navigate("/onboarding");
-  };
+    if (!confirm("Sigur vrei să resetezi sesiunea?")) return
+    dispatch(clearProfile())
+    navigate("/login")
+  }
 
   return (
     <div style={{ padding: "28px 36px 60px", maxWidth: 1100 }}>
-
-      {/* Header */}
       <div style={{ marginBottom: 28 }}>
         <h1 className="tt-page-title">Setări</h1>
         <p className="tt-page-sub">Profilul tău, prețuri și integrări</p>
@@ -153,7 +297,7 @@ export default function SettingsPage() {
           ))}
         </nav>
 
-        {/* Right content panel */}
+        {/* Right content */}
         <div className="tt-card" style={{ padding: 28 }}>
 
           {/* Profil */}
@@ -219,10 +363,7 @@ export default function SettingsPage() {
                         className="tt-input tabular"
                         style={{ paddingRight: 50 }}
                       />
-                      <span style={{
-                        position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
-                        fontSize: 12, color: "var(--text-3)", fontWeight: 500, pointerEvents: "none",
-                      }}>
+                      <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--text-3)", fontWeight: 500, pointerEvents: "none" }}>
                         {form.currency}
                       </span>
                     </div>
@@ -239,7 +380,7 @@ export default function SettingsPage() {
               </div>
               <div style={{ marginTop: 20 }}>
                 <button
-                  onClick={e => { e.preventDefault(); dispatch(updateProfile(form)); setSaved(true); setTimeout(() => setSaved(false), 2000); }}
+                  onClick={e => { e.preventDefault(); dispatch(updateProfile(form)); setSaved(true); setTimeout(() => setSaved(false), 2000) }}
                   className="tt-btn tt-btn-primary" style={{ height: 38 }}
                 >
                   {saved ? <><IcCheck /> Salvat!</> : "Salvează prețurile"}
@@ -250,57 +391,7 @@ export default function SettingsPage() {
 
           {/* Integrări */}
           {tab === "integrations" && (
-            <div>
-              <div style={{
-                display: "flex", alignItems: "center", gap: 14, padding: 16,
-                background: "var(--bg-input)", borderRadius: "var(--r-md)",
-              }}>
-                <div style={{
-                  width: 42, height: 42, borderRadius: "var(--r-md)",
-                  background: "var(--bg-card)", border: "0.5px solid var(--border)",
-                  display: "grid", placeItems: "center", color: "var(--accent)", flexShrink: 0,
-                }}>
-                  <IcCalendar />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-1)" }}>Google Calendar</div>
-                  <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
-                    {profile.googleCalendarConnected
-                      ? "Poți importa lecții din calendar la pagina Lecții"
-                      : "Importă lecțiile programate automat"}
-                  </div>
-                </div>
-                {profile.googleCalendarConnected ? (
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <span className="tt-pill tt-pill-active"><IcCheck /> Conectat</span>
-                    <button
-                      onClick={() => dispatch(updateProfile({ googleCalendarToken: null, googleCalendarConnected: false }))}
-                      className="tt-btn tt-btn-secondary" style={{ height: 32, fontSize: 12.5 }}
-                    >Deconectează</button>
-                  </div>
-                ) : (
-                  <button
-                    disabled={connecting}
-                    onClick={async () => {
-                      setConnecting(true);
-                      try {
-                        const token = await requestCalendarToken();
-                        dispatch(updateProfile({ googleCalendarToken: token, googleCalendarConnected: true }));
-                      } catch (err) {
-                        console.error("Google auth error:", err);
-                        alert("Conectare eșuată. Încearcă din nou.");
-                      } finally {
-                        setConnecting(false);
-                      }
-                    }}
-                    className="tt-btn tt-btn-secondary"
-                    style={{ height: 36, gap: 8, flexShrink: 0, opacity: connecting ? 0.6 : 1 }}
-                  >
-                    <IcGoogle /> {connecting ? "Se conectează..." : "Conectează"}
-                  </button>
-                )}
-              </div>
-            </div>
+            <IntegrationsTab />
           )}
 
           {/* Date */}
@@ -314,8 +405,6 @@ export default function SettingsPage() {
                   <IcDownload /> Exportă JSON
                 </button>
               </div>
-
-              {/* Danger zone */}
               <div style={{
                 padding: 18, borderRadius: "var(--r-md)",
                 background: "var(--danger-soft)",
@@ -327,7 +416,7 @@ export default function SettingsPage() {
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
                   <div>
                     <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--text-1)" }}>Resetează sesiunea</div>
-                    <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Curăță profilul local și mergi la onboarding</div>
+                    <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Curăță profilul local și mergi la login</div>
                   </div>
                   <button
                     onClick={handleClearAll}
@@ -351,5 +440,5 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
-  );
+  )
 }
