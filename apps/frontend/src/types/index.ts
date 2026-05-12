@@ -11,39 +11,66 @@ export interface Profile {
 }
 
 export interface Student {
-  id?: number
+  id: string
+  tutorId: string
+  userAccountId?: string | null
   name: string
-  subject: string
-  grade: string
+  subject?: string
+  grade?: string
   status: 'active' | 'inactive'
-  priority: boolean
-  phone: string
-  notes: string
+  phone?: string
+  email?: string
+  notes?: string
   createdAt: string
+  updatedAt: string
+  deletedAt?: string | null
+  createdBy?: string | null
+  updatedBy?: string | null
 }
 
 export interface Lesson {
-  id?: number
-  studentId: number
-  title?: string
+  id: string
+  tutorId: string
+  studentId: string
   date: string
-  durationMinutes: 60 | 90 | 120
-  pricePerSession: number
-  status: 'done' | 'cancelled'
-  paymentStatus: 'paid' | 'unpaid'
-  googleCalendarEventId: string | null
-  notes: string
+  durationMinutes: number
+  price: string
+  isPaid: boolean
+  gradeSnapshot?: string | null
+  studentNameSnapshot: string
+  subjectSnapshot?: string | null
+  googleCalendarEventId?: string | null
+  notes?: string | null
   createdAt: string
+  updatedAt: string
+  deletedAt?: string | null
+  createdBy?: string | null
+  updatedBy?: string | null
+  student?: { id: string; name: string; subject?: string }
+  payment?: Payment | null
 }
 
 export interface Payment {
-  id?: number
-  studentId: number
-  amount: number
-  currency: string
-  period: string
+  id: string
+  tutorId: string
+  studentId: string
+  lessonId: string
+  amount: string
+  month: string
   status: 'paid' | 'unpaid' | 'partial'
-  date: string
-  notes: string
+  paidAt?: string | null
   createdAt: string
+  updatedAt: string
+  deletedAt?: string | null
+  createdBy?: string | null
+  updatedBy?: string | null
+  student?: { id: string; name: string }
+  lesson?: { id: string; date: string; durationMinutes: number }
+}
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  total: number
+  limit: number
+  offset: number
 }
