@@ -11,6 +11,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
+import { GoogleModule } from './google/google.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
     StudentsModule,
     LessonsModule,
     PaymentsModule,
+    GoogleModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
