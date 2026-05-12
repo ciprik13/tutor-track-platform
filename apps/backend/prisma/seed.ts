@@ -6,7 +6,6 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('🌱 Seeding database...')
 
-  // ── Curăță datele existente (în ordine corectă pentru FK) ──
   await prisma.auditLog.deleteMany()
   await prisma.payment.deleteMany()
   await prisma.lesson.deleteMany()
@@ -20,7 +19,6 @@ async function main() {
   const adminPassword = await bcrypt.hash('admin123', 12)
   const admin = await prisma.user.create({
     data: {
-      id:           'admin-0000-0000-0000-000000000000',
       email:        'admin@tutortrack.com',
       passwordHash: adminPassword,
       name:         'Admin TutorTrack',
@@ -34,7 +32,6 @@ async function main() {
   const tutorPassword = await bcrypt.hash('tutor123', 12)
   const tutor = await prisma.user.create({
     data: {
-      id:           'tutor-0000-0000-0000-000000000001',
       email:        'ciprian@tutortrack.com',
       passwordHash: tutorPassword,
       name:         'Ciprian Moisenco',
@@ -49,7 +46,6 @@ async function main() {
   // ── Students ───────────────────────────────────────────────
   const studentsData = [
     {
-      id:      'student-0000-0000-0000-000000000001',
       name:    'Maria Ionescu',
       subject: 'Matematică',
       grade:   '10',
@@ -59,7 +55,6 @@ async function main() {
       notes:   'Progres excelent la algebră. Lucrăm la geometrie.',
     },
     {
-      id:      'student-0000-0000-0000-000000000002',
       name:    'Alexandru Popescu',
       subject: 'Fizică',
       grade:   '11',
@@ -69,7 +64,6 @@ async function main() {
       notes:   'Dificultăți la mecanică. Îmbunătățiri vizibile.',
     },
     {
-      id:      'student-0000-0000-0000-000000000003',
       name:    'Elena Dumitru',
       subject: 'Chimie',
       grade:   '9',
@@ -78,7 +72,6 @@ async function main() {
       notes:   'Foarte motivată. Pregătire pentru olimpiadă.',
     },
     {
-      id:      'student-0000-0000-0000-000000000004',
       name:    'Andrei Ciobanu',
       subject: 'Matematică',
       grade:   '12',
@@ -87,7 +80,6 @@ async function main() {
       notes:   'Pregătire BAC. Focalizat pe probleme de probabilitate.',
     },
     {
-      id:      'student-0000-0000-0000-000000000005',
       name:    'Sofia Rusu',
       subject: 'Informatică',
       grade:   '10',
@@ -111,12 +103,11 @@ async function main() {
   }
   console.log(`👥 Created ${students.length} students`)
 
-  // ── Lessons (ultimele 2 luni) ──────────────────────────────
+  // ── Lessons ────────────────────────────────────────────────
   const now = new Date()
   const lessons = []
 
   const lessonTemplates = [
-    // Mai 2026
     { studentIdx: 0, daysAgo: 1,  hour: 16, duration: 60,  price: 250, isPaid: false },
     { studentIdx: 1, daysAgo: 2,  hour: 18, duration: 90,  price: 350, isPaid: false },
     { studentIdx: 2, daysAgo: 3,  hour: 15, duration: 60,  price: 250, isPaid: true  },
@@ -125,7 +116,6 @@ async function main() {
     { studentIdx: 1, daysAgo: 9,  hour: 18, duration: 90,  price: 350, isPaid: true  },
     { studentIdx: 2, daysAgo: 10, hour: 15, duration: 60,  price: 250, isPaid: true  },
     { studentIdx: 3, daysAgo: 11, hour: 17, duration: 60,  price: 250, isPaid: true  },
-    // Aprilie 2026
     { studentIdx: 0, daysAgo: 32, hour: 16, duration: 60,  price: 250, isPaid: true  },
     { studentIdx: 1, daysAgo: 33, hour: 18, duration: 90,  price: 350, isPaid: true  },
     { studentIdx: 2, daysAgo: 35, hour: 15, duration: 60,  price: 250, isPaid: true  },
@@ -151,7 +141,7 @@ async function main() {
         isPaid:              t.isPaid,
         gradeSnapshot:       student.grade,
         studentNameSnapshot: student.name,
-        subjectSnapshot:     student.subject,
+        subjectSnapshot:     student.subject ?? '',
         createdBy:           tutor.id,
         updatedBy:           tutor.id,
       },
@@ -183,7 +173,6 @@ async function main() {
   }
   console.log(`💰 Created ${paymentsCount} payments`)
 
-  // ── Summary ────────────────────────────────────────────────
   console.log('\n✅ Seed completed!')
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
   console.log('🔑 Login credentials:')
@@ -200,3 +189,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect()
   })
+  
