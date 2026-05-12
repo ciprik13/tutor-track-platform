@@ -1,4 +1,4 @@
-import { NestFactory, Reflector } from "@nestjs/core";
+import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { ConfigService } from "@nestjs/config";
@@ -9,8 +9,9 @@ async function bootstrap() {
   const config = app.get(ConfigService);
 
   // CORS
+  const corsOrigin = config.get<string>("corsOrigin");
   app.enableCors({
-    origin: config.get<string>("corsOrigin"),
+    origin: corsOrigin ? corsOrigin.split(',').map(s => s.trim()) : '*',
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
@@ -22,20 +23,20 @@ async function bootstrap() {
   // Validation
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // strip câmpuri necunoscute
+      whitelist: true,
       forbidNonWhitelisted: true,
-      transform: true, // auto-cast query params
+      transform: true,
       transformOptions: { enableImplicitConversion: true },
     }),
   );
 
   // Swagger
+  const port = config.get<number>("port") || 3000;
   const swaggerConfig = new DocumentBuilder()
     .setTitle("TutorTrack API")
     .setDescription("REST API for managing private tutoring sessions")
     .setVersion("1.0")
     .addBearerAuth()
-    .addServer(`http://localhost:${config.get("port")}`)
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
@@ -43,8 +44,7 @@ async function bootstrap() {
     swaggerOptions: { persistAuthorization: true },
   });
 
-  const port = config.get<number>("port") || 3000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   console.log(`🚀 API:     http://localhost:${port}/api`);
   console.log(`📚 Swagger: http://localhost:${port}/docs`);
 }
