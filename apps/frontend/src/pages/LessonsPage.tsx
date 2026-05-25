@@ -168,6 +168,8 @@ export default function LessonsPage() {
 
                 {dayLessons.map((lesson, i) => {
                   const student = getStudent(lesson.studentId);
+                  // Always show avatar using studentNameSnapshot as fallback
+                  const displayName = student?.name ?? lesson.studentNameSnapshot ?? "?";
                   return (
                     <div
                       key={lesson.id}
@@ -184,14 +186,12 @@ export default function LessonsPage() {
                         <div>
                           {/* Row 1: avatar + name + price */}
                           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                            {student && (
-                              <div className="tt-avatar" style={{ width: 30, height: 30, fontSize: 11, flexShrink: 0 }}>
-                                {getInitials(student.name)}
-                              </div>
-                            )}
+                            <div className="tt-avatar" style={{ width: 30, height: 30, fontSize: 11, flexShrink: 0 }}>
+                              {getInitials(displayName)}
+                            </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {student?.name ?? lesson.studentNameSnapshot ?? "—"}
+                                {displayName}
                               </div>
                               <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 1 }}>
                                 {lesson.subjectSnapshot ?? student?.subject} · {lesson.durationMinutes} min · {fmtTime(lesson.date)}
@@ -234,14 +234,12 @@ export default function LessonsPage() {
                             {fmtTime(lesson.date)}
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-                            {student && (
-                              <div className="tt-avatar" style={{ width: 30, height: 30, fontSize: 11, flexShrink: 0 }}>
-                                {getInitials(student.name)}
-                              </div>
-                            )}
+                            <div className="tt-avatar" style={{ width: 30, height: 30, fontSize: 11, flexShrink: 0 }}>
+                              {getInitials(displayName)}
+                            </div>
                             <div style={{ minWidth: 0 }}>
                               <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-1)", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {student?.name ?? lesson.studentNameSnapshot ?? "—"}
+                                {displayName}
                               </div>
                               <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 1 }}>
                                 {lesson.subjectSnapshot ?? student?.subject} · {lesson.durationMinutes} min
