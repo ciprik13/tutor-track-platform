@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useStudents } from "@/queries/useStudents";
 import { useLessons, useUpdateLesson } from "@/queries/useLessons";
 import { useSelector } from "react-redux";
@@ -28,6 +28,13 @@ export default function ReportsPage() {
   const [selectedStudentId, setSelectedStudentId] = useState<string | undefined>();
   const [selectedMonth, setSelectedMonth]         = useState(new Date().toISOString().slice(0, 7));
   const [copied, setCopied]                       = useState(false);
+  const [isMobile, setIsMobile]                   = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', h)
+    return () => window.removeEventListener('resize', h)
+  }, [])
 
   const profile      = useSelector((s: RootState) => s.profile);
   const queryClient  = useQueryClient();
@@ -89,18 +96,24 @@ export default function ReportsPage() {
   const unpaidAmount = (lessons as any[]).filter((l: any) => !l.isPaid).reduce((s: number, l: any) => s + Number(l.price), 0);
 
   return (
-    <div style={{ padding: '28px 36px 60px', maxWidth: 1280 }}>
+    <div style={{ padding: isMobile ? '20px 16px 60px' : '28px 36px 60px', maxWidth: 1280 }}>
 
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 20 }}>
         <h1 className="tt-page-title">Rapoarte</h1>
         <p className="tt-page-sub">Generează raport lunar și trimite-l părinților</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 20, alignItems: 'start' }}>
+      {/* Layout — stacked on mobile, side-by-side on desktop */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : '300px 1fr',
+        gap: 16,
+        alignItems: 'start',
+      }}>
 
         {/* Left: filters + summary */}
-        <div className="tt-card" style={{ padding: 20 }}>
+        <div className="tt-card" style={{ padding: 18 }}>
           <div style={{ marginBottom: 14 }}>
             <label className="tt-label">Student</label>
             <select
@@ -149,16 +162,17 @@ export default function ReportsPage() {
         {/* Right: report preview */}
         <div>
           {!selectedStudentId ? (
-            <div className="tt-card" style={{ padding: 28, textAlign: 'center' }}>
+            <div className="tt-card" style={{ padding: isMobile ? 20 : 28, textAlign: 'center' }}>
               <p style={{ fontSize: 14, color: 'var(--text-3)', lineHeight: 1.6 }}>
                 Selectează un student și o lună pentru a genera raportul
               </p>
               <div style={{
-                marginTop: 20, padding: '18px 20px',
+                marginTop: 16, padding: '16px 18px',
                 background: 'var(--bg-page)', border: '0.5px dashed var(--border)',
                 borderRadius: 'var(--r-md)',
-                fontFamily: 'var(--font-mono)', fontSize: 12.5, lineHeight: 1.7,
+                fontFamily: 'var(--font-mono)', fontSize: isMobile ? 11 : 12.5, lineHeight: 1.7,
                 color: 'var(--text-3)', textAlign: 'left', whiteSpace: 'pre-wrap',
+                overflowX: 'auto',
               }}>
                 {`Salut [Nume]. Îți trimit orarul lecțiilor de [Materie] din luna [Lună]:
 
@@ -178,15 +192,15 @@ Total de achitat: [total] lei`}
               </p>
             </div>
           ) : (
-            <div className="tt-card" style={{ padding: 24 }}>
+            <div className="tt-card" style={{ padding: isMobile ? 16 : 24 }}>
               <div style={{
-                padding: '18px 20px', marginBottom: 18,
+                padding: '16px 18px', marginBottom: 16,
                 background: 'var(--bg-page)',
                 border: '0.5px solid var(--border)',
                 borderRadius: 'var(--r-md)',
-                fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: 1.75,
+                fontFamily: 'var(--font-mono)', fontSize: isMobile ? 12 : 13, lineHeight: 1.75,
                 color: 'var(--text-1)', whiteSpace: 'pre-wrap',
-                maxHeight: 420, overflowY: 'auto',
+                maxHeight: 380, overflowY: 'auto',
               }}>
                 {report}
               </div>
@@ -195,12 +209,12 @@ Total de achitat: [total] lei`}
                 <button
                   onClick={handleCopy}
                   className="tt-btn tt-btn-primary"
-                  style={{ flex: 1, height: 42, minWidth: 180 }}
+                  style={{ flex: 1, height: 42, minWidth: 160 }}
                 >
                   {copied ? <><IcCheck /> Copiat!</> : <><IcCopy /> Copiază în clipboard</>}
                 </button>
                 <button className="tt-btn tt-btn-secondary" style={{ height: 42 }}>
-                  <IcWhatsApp /> Deschide WhatsApp
+                  <IcWhatsApp /> WhatsApp
                 </button>
               </div>
 
@@ -214,11 +228,16 @@ Total de achitat: [total] lei`}
               </button>
 
               {Object.keys(grouped).length > 0 && (
-                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Object.keys(grouped).length}, 1fr)`, gap: 12, marginTop: 20 }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${Math.min(Object.keys(grouped).length, isMobile ? 2 : Object.keys(grouped).length)}, 1fr)`,
+                  gap: 10,
+                  marginTop: 16,
+                }}>
                   {Object.entries(grouped).map(([dur, items]) => (
-                    <div key={dur} style={{ padding: '14px 16px', background: 'var(--bg-page)', borderRadius: 'var(--r-md)', border: '0.5px solid var(--border)' }}>
+                    <div key={dur} style={{ padding: '12px 14px', background: 'var(--bg-page)', borderRadius: 'var(--r-md)', border: '0.5px solid var(--border)' }}>
                       <div style={{ fontSize: 11, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>{dur} min</div>
-                      <div className="tt-metric tabular" style={{ fontSize: 24, color: 'var(--text-1)', marginTop: 6 }}>{(items as any[]).length}</div>
+                      <div className="tt-metric tabular" style={{ fontSize: 22, color: 'var(--text-1)', marginTop: 6 }}>{(items as any[]).length}</div>
                       <div className="tabular" style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>
                         {(items as any[]).reduce((s: number, l: any) => s + Number(l.price), 0).toLocaleString()} {profile.currency}
                       </div>

@@ -331,7 +331,7 @@ export default function Layout({ children }: Props) {
           <button onClick={() => setMobileOpen(true)} style={{ width: 36, height: 36, borderRadius: 8, color: "var(--text-1)", display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer" }}>
             <Ic.Menu />
           </button>
-          <LogoFull height={28} onClick={() => navigate("/dashboard")} />
+          <LogoFull height={56} onClick={() => navigate("/dashboard")} />
           <button onClick={() => dispatch(toggleTheme())} style={{ width: 36, height: 36, borderRadius: 8, color: "var(--text-2)", display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer" }}>
             {isDark ? <Ic.Sun /> : <Ic.Moon />}
           </button>
