@@ -2,7 +2,6 @@ import {
   Controller,
   Get,
   Query,
-  Redirect,
   Res,
   UseGuards,
   Post,
@@ -16,6 +15,7 @@ import {
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
+import { ConfigService } from "@nestjs/config";
 import { GoogleCalendarService } from "./google-calendar.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -29,6 +29,7 @@ export class GoogleCalendarController {
   constructor(
     private readonly googleService: GoogleCalendarService,
     private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
   ) {}
 
   // ── Connect — redirect to Google ─────────────────────────
@@ -52,6 +53,7 @@ export class GoogleCalendarController {
     @Query("state") tutorId: string,
     @Res() res: Response,
   ) {
+    const frontendUrl = this.config.get<string>("CORS_ORIGIN");
     try {
       const tokens = await this.googleService.exchangeCode(code);
 
@@ -78,11 +80,11 @@ export class GoogleCalendarController {
 
       // Redirect înapoi la frontend cu succes
       return res.redirect(
-        "http://localhost:5173/tutor-track/#/settings?tab=integrations&google=success",
+        `${frontendUrl}/#/settings?tab=integrations&google=success`,
       );
     } catch (err: any) {
       return res.redirect(
-        `http://localhost:5173/tutor-track/#/settings?tab=integrations&google=error&msg=${encodeURIComponent(err.message)}`,
+        `${frontendUrl}/#/settings?tab=integrations&google=error&msg=${encodeURIComponent(err.message)}`,
       );
     }
   }
