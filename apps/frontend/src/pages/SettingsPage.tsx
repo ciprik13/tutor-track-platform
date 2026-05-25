@@ -319,23 +319,37 @@ export default function SettingsPage() {
     }));
   };
 
-  const handleExport = async () => {
-    try {
-      const [studentsRes, lessonsRes, paymentsRes] = await Promise.all([
-        studentsApi.getAll(1000),
-        lessonsApi.getAll(1000),
-        paymentsApi.getAll(1000),
-      ]);
-      const blob = new Blob([JSON.stringify({ profile, students: studentsRes.data, lessons: lessonsRes.data, payments: paymentsRes.data, exportedAt: new Date().toISOString() }, null, 2)], { type: "application/json" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `tutor-track-backup-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-    } catch {
-      console.error("Export error:", err); alert("Export eșuat: " + (err as any)?.message);
-    }
-  };
+  const fetchAllPages = async (apiFn: (limit: number, offset: number) => Promise<any>) => {
+  const PAGE = 100;
+  let offset = 0;
+  let allData: any[] = [];
+  while (true) {
+    const res = await apiFn(PAGE, offset);
+    allData = [...allData, ...res.data];
+    if (allData.length >= res.total) break;
+    offset += PAGE;
+  }
+  return allData;
+};
+
+const handleExport = async () => {
+  try {
+    const [students, lessons, payments] = await Promise.all([
+      fetchAllPages(studentsApi.getAll),
+      fetchAllPages(lessonsApi.getAll),
+      fetchAllPages(paymentsApi.getAll),
+    ]);
+    const blob = new Blob([JSON.stringify({ profile, students, lessons, payments, exportedAt: new Date().toISOString() }, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `tutor-track-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch (err) {
+    console.error("Export error:", err);
+    alert("Export eșuat: " + (err as any)?.message);
+  }
+};
 
   const handleClearAll = async () => {
     if (!confirm("Sigur vrei să resetezi sesiunea?")) return;
