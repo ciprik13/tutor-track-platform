@@ -32,7 +32,7 @@ apiClient.interceptors.response.use(
           store.dispatch(clearAuth())
         })
       })
-      window.location.href = '/tutor-track/#/login'
+      window.location.href = '/#/login'
     }
     return Promise.reject(error)
   },

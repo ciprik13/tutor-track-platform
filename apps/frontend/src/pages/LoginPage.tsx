@@ -64,7 +64,7 @@ export default function LoginPage() {
       <div style={{
         position: 'absolute',
         inset: 0,
-        backgroundImage: 'url(/tutor-track/tutor-image.jpg)',
+        backgroundImage: 'url(/tutor-image.jpg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         filter: 'brightness(0.35)',
@@ -89,7 +89,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <img
-            src="/tutor-track/logo.png"
+            src="/logo.png"
             alt="TutorTrack"
             style={{
               height: 48,
