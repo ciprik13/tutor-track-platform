@@ -15,7 +15,6 @@ RUN pnpm install --filter backend --frozen-lockfile
 
 COPY apps/backend/ ./apps/backend/
 
-# Use local prisma binary (v5.22.0) not npx which downloads latest
 RUN cd apps/backend && ./node_modules/.bin/prisma generate --schema=./prisma/schema.prisma
 
 RUN pnpm --filter backend run build
@@ -33,13 +32,16 @@ COPY pnpm-lock.yaml ./
 COPY package.json ./
 COPY apps/backend/package.json ./apps/backend/
 
-RUN pnpm install --filter backend --frozen-lockfile --prod
+# Install ALL deps (not --prod) so prisma CLI is available for generate
+RUN pnpm install --filter backend --frozen-lockfile
 
-COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
 COPY apps/backend/prisma ./apps/backend/prisma
 
-# Use local prisma binary (v5.22.0) not npx
+# Generate prisma client
 RUN cd apps/backend && ./node_modules/.bin/prisma generate --schema=./prisma/schema.prisma
+
+# Copy built dist from builder
+COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
 
 WORKDIR /app/apps/backend
 
