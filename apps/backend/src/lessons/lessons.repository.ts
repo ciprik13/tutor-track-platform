@@ -51,6 +51,32 @@ export class LessonsRepository {
     gradeSnapshot: string | null;
     subjectSnapshot: string | null;
   }) {
+    // If a soft-deleted lesson exists with same googleCalendarEventId, restore it
+    if (dto.googleCalendarEventId) {
+      const existing = await this.prisma.lesson.findFirst({
+        where: {
+          tutorId,
+          googleCalendarEventId: dto.googleCalendarEventId,
+          deletedAt: { not: null },
+        },
+      });
+      if (existing) {
+        return this.prisma.lesson.update({
+          where: { id: existing.id },
+          data: {
+            deletedAt: null,
+            date: new Date(dto.date),
+            durationMinutes: dto.durationMinutes,
+            price: dto.price,
+            isPaid: dto.isPaid ?? false,
+            notes: dto.notes,
+            updatedBy: createdBy,
+            updatedAt: new Date(),
+          },
+        });
+      }
+    }
+
     return this.prisma.lesson.create({
       data: {
         tutorId,
