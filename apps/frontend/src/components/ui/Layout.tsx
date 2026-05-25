@@ -6,6 +6,8 @@ import { clearAuth } from "@/store/slices/authSlice";
 import { clearToken } from "@/lib/api";
 import { getInitials } from "@/lib/dateUtils";
 import type { RootState, AppDispatch } from "@/store";
+import { useQueryClient } from "@tanstack/react-query";
+import { clearProfile } from "@/store/slices/profileSlice";
 
 const Ic = {
   Dashboard: () => (
@@ -168,6 +170,8 @@ export default function Layout({ children }: Props) {
 
   const [isMobile, setIsMobile]   = useState(window.innerWidth < 768);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const user = useSelector((s: RootState) => s.auth.user);
 
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 768);
@@ -184,6 +188,8 @@ export default function Layout({ children }: Props) {
   const handleLogout = () => {
     clearToken();
     dispatch(clearAuth());
+    dispatch(clearProfile(user?.id));
+    queryClient.clear();
     navigate("/login");
   };
 
