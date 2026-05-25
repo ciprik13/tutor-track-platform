@@ -53,7 +53,8 @@ export class GoogleCalendarController {
     @Query("state") tutorId: string,
     @Res() res: Response,
   ) {
-    const frontendUrl = this.config.get<string>("CORS_ORIGIN");
+    const corsOrigin = this.config.get<string>("CORS_ORIGIN") ?? "";
+    const frontendUrl = corsOrigin.split(",")[0].trim();
     try {
       const tokens = await this.googleService.exchangeCode(code);
 
