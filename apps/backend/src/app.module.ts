@@ -12,6 +12,7 @@ import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { GoogleModule } from './google/google.module';
+import { HealthController } from './health/health.controller';
 
 @Module({
   imports: [
@@ -29,5 +30,6 @@ import { GoogleModule } from './google/google.module';
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_INTERCEPTOR, useClass: AuditLogInterceptor },
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}
