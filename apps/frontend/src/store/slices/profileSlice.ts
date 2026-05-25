@@ -1,12 +1,15 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit'
 import type { Profile } from '@/types'
 
-const STORAGE_KEY = 'tutor_profile'
+const getStorageKey = (userId?: string) => 
+  userId ? `tutor_profile_${userId}` : 'tutor_profile'
 
 export const loadProfileFromStorage = createAsyncThunk(
   'profile/loadFromStorage',
-  () => {
-    const raw = localStorage.getItem(STORAGE_KEY)
+  (userId: string) => {
+    // Try user-specific key first, then fall back to old key
+    const raw = localStorage.getItem(getStorageKey(userId)) 
+      ?? localStorage.getItem('tutor_profile')
     return raw ? (JSON.parse(raw) as Profile) : null
   }
 )
@@ -27,12 +30,15 @@ const profileSlice = createSlice({
   name: 'profile',
   initialState,
   reducers: {
-    updateProfile: (state, action: PayloadAction<Partial<Profile>>) => {
-      Object.assign(state, action.payload)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    updateProfile: (state, action: PayloadAction<Partial<Profile> & { _userId?: string }>) => {
+      const { _userId, ...rest } = action.payload
+      Object.assign(state, rest)
+      localStorage.setItem(getStorageKey(_userId), JSON.stringify(state))
     },
-    clearProfile: () => {
-      localStorage.removeItem(STORAGE_KEY)
+    clearProfile: (_, action: PayloadAction<string | undefined>) => {
+      const userId = action.payload
+      localStorage.removeItem(getStorageKey(userId))
+      localStorage.removeItem('tutor_profile') // clean up old key
       return initialState
     },
   },

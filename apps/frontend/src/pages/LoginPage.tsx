@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { login, register } from '@/lib/authApi'
 import { setAuth } from '@/store/slices/authSlice'
-import { updateProfile } from '@/store/slices/profileSlice'
+import { updateProfile, clearProfile } from '@/store/slices/profileSlice'
 import type { AppDispatch } from '@/store'
 
 export default function LoginPage() {
@@ -35,11 +35,15 @@ export default function LoginPage() {
         ? await login({ email: form.email, password: form.password })
         : await register({ name: form.name, email: form.email, password: form.password, phone: form.phone })
 
+      // Clear any previous user's profile before loading the new one
+      dispatch(clearProfile(undefined))
+
       dispatch(setAuth({ user: response.user, token: response.access_token }))
       dispatch(updateProfile({
-        name:  response.user.name,
-        email: response.user.email,
-        phone: response.user.phone ?? '',
+        name:    response.user.name,
+        email:   response.user.email,
+        phone:   response.user.phone ?? '',
+        _userId: response.user.id,
       }))
       navigate('/dashboard')
     } catch (err: any) {
@@ -142,20 +146,7 @@ export default function LoginPage() {
                 onChange={handleChange}
                 placeholder="Ion Popescu"
                 required
-                style={{
-                  width: '100%',
-                  height: 42,
-                  padding: '0 14px',
-                  borderRadius: 'var(--r-md)',
-                  background: 'rgba(255,255,255,0.1)',
-                  border: '0.5px solid rgba(255,255,255,0.2)',
-                  color: 'white',
-                  fontSize: 14,
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                  fontFamily: 'var(--font-text)',
-                  transition: 'border-color 150ms',
-                }}
+                style={{ width: '100%', height: 42, padding: '0 14px', borderRadius: 'var(--r-md)', background: 'rgba(255,255,255,0.1)', border: '0.5px solid rgba(255,255,255,0.2)', color: 'white', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'var(--font-text)', transition: 'border-color 150ms' }}
                 onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)')}
                 onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)')}
               />
@@ -163,61 +154,22 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.7)', display: 'block', marginBottom: 6 }}>
-              Email
-            </label>
+            <label style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.7)', display: 'block', marginBottom: 6 }}>Email</label>
             <input
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={handleChange}
-              placeholder="ion@email.com"
-              required
-              style={{
-                width: '100%',
-                height: 42,
-                padding: '0 14px',
-                borderRadius: 'var(--r-md)',
-                background: 'rgba(255,255,255,0.1)',
-                border: '0.5px solid rgba(255,255,255,0.2)',
-                color: 'white',
-                fontSize: 14,
-                outline: 'none',
-                boxSizing: 'border-box',
-                fontFamily: 'var(--font-text)',
-                transition: 'border-color 150ms',
-              }}
+              name="email" type="email" value={form.email} onChange={handleChange}
+              placeholder="ion@email.com" required
+              style={{ width: '100%', height: 42, padding: '0 14px', borderRadius: 'var(--r-md)', background: 'rgba(255,255,255,0.1)', border: '0.5px solid rgba(255,255,255,0.2)', color: 'white', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'var(--font-text)', transition: 'border-color 150ms' }}
               onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)')}
               onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)')}
             />
           </div>
 
           <div>
-            <label style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.7)', display: 'block', marginBottom: 6 }}>
-              Parolă
-            </label>
+            <label style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.7)', display: 'block', marginBottom: 6 }}>Parolă</label>
             <input
-              name="password"
-              type="password"
-              value={form.password}
-              onChange={handleChange}
-              placeholder="Minim 6 caractere"
-              required
-              minLength={6}
-              style={{
-                width: '100%',
-                height: 42,
-                padding: '0 14px',
-                borderRadius: 'var(--r-md)',
-                background: 'rgba(255,255,255,0.1)',
-                border: '0.5px solid rgba(255,255,255,0.2)',
-                color: 'white',
-                fontSize: 14,
-                outline: 'none',
-                boxSizing: 'border-box',
-                fontFamily: 'var(--font-text)',
-                transition: 'border-color 150ms',
-              }}
+              name="password" type="password" value={form.password} onChange={handleChange}
+              placeholder="Minim 6 caractere" required minLength={6}
+              style={{ width: '100%', height: 42, padding: '0 14px', borderRadius: 'var(--r-md)', background: 'rgba(255,255,255,0.1)', border: '0.5px solid rgba(255,255,255,0.2)', color: 'white', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'var(--font-text)', transition: 'border-color 150ms' }}
               onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)')}
               onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)')}
             />
@@ -225,28 +177,11 @@ export default function LoginPage() {
 
           {mode === 'register' && (
             <div>
-              <label style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.7)', display: 'block', marginBottom: 6 }}>
-                Telefon (opțional)
-              </label>
+              <label style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.7)', display: 'block', marginBottom: 6 }}>Telefon (opțional)</label>
               <input
-                name="phone"
-                value={form.phone}
-                onChange={handleChange}
+                name="phone" value={form.phone} onChange={handleChange}
                 placeholder="+373 69 000 000"
-                style={{
-                  width: '100%',
-                  height: 42,
-                  padding: '0 14px',
-                  borderRadius: 'var(--r-md)',
-                  background: 'rgba(255,255,255,0.1)',
-                  border: '0.5px solid rgba(255,255,255,0.2)',
-                  color: 'white',
-                  fontSize: 14,
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                  fontFamily: 'var(--font-text)',
-                  transition: 'border-color 150ms',
-                }}
+                style={{ width: '100%', height: 42, padding: '0 14px', borderRadius: 'var(--r-md)', background: 'rgba(255,255,255,0.1)', border: '0.5px solid rgba(255,255,255,0.2)', color: 'white', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'var(--font-text)', transition: 'border-color 150ms' }}
                 onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)')}
                 onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)')}
               />
@@ -254,35 +189,14 @@ export default function LoginPage() {
           )}
 
           {error && (
-            <div style={{
-              fontSize: 12.5,
-              color: '#ffb3b3',
-              background: 'rgba(255,80,80,0.15)',
-              padding: '10px 14px',
-              borderRadius: 'var(--r-md)',
-              border: '0.5px solid rgba(255,80,80,0.3)',
-            }}>
+            <div style={{ fontSize: 12.5, color: '#ffb3b3', background: 'rgba(255,80,80,0.15)', padding: '10px 14px', borderRadius: 'var(--r-md)', border: '0.5px solid rgba(255,80,80,0.3)' }}>
               {error}
             </div>
           )}
 
           <button
-            type="submit"
-            disabled={loading}
-            style={{
-              height: 44,
-              borderRadius: 'var(--r-md)',
-              background: loading ? 'rgba(82,171,152,0.6)' : 'var(--accent)',
-              color: 'white',
-              fontSize: 14,
-              fontWeight: 600,
-              border: 'none',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              marginTop: 6,
-              fontFamily: 'var(--font-text)',
-              letterSpacing: '-0.01em',
-              transition: 'opacity 150ms',
-            }}
+            type="submit" disabled={loading}
+            style={{ height: 44, borderRadius: 'var(--r-md)', background: loading ? 'rgba(82,171,152,0.6)' : 'var(--accent)', color: 'white', fontSize: 14, fontWeight: 600, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', marginTop: 6, fontFamily: 'var(--font-text)', letterSpacing: '-0.01em', transition: 'opacity 150ms' }}
           >
             {loading
               ? (mode === 'login' ? 'Se autentifică...' : 'Se creează contul...')
@@ -296,20 +210,14 @@ export default function LoginPage() {
           {mode === 'login' ? (
             <>
               Nu ai cont?{' '}
-              <button
-                onClick={() => { setMode('register'); setError('') }}
-                style={{ color: 'rgba(255,255,255,0.9)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 600 }}
-              >
+              <button onClick={() => { setMode('register'); setError('') }} style={{ color: 'rgba(255,255,255,0.9)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 600 }}>
                 Înregistrează-te
               </button>
             </>
           ) : (
             <>
               Ai deja cont?{' '}
-              <button
-                onClick={() => { setMode('login'); setError('') }}
-                style={{ color: 'rgba(255,255,255,0.9)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 600 }}
-              >
+              <button onClick={() => { setMode('login'); setError('') }} style={{ color: 'rgba(255,255,255,0.9)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 600 }}>
                 Intră în cont
               </button>
             </>

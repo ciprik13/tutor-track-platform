@@ -54,7 +54,8 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "data", label: "Date" },
 ];
 
-function ProfileTab({ isMobile }: { isMobile: boolean }) {
+// ── Profile Tab ───────────────────────────────────────────────
+function ProfileTab({ isMobile, userId }: { isMobile: boolean; userId?: string }) {
   const dispatch = useDispatch<AppDispatch>();
   const profile = useSelector((s: RootState) => s.profile);
   const theme = useSelector((s: RootState) => s.ui.theme);
@@ -76,7 +77,7 @@ function ProfileTab({ isMobile }: { isMobile: boolean }) {
     setSaving(true);
     try {
       await apiClient.patch("/auth/me", { name: form.name, phone: form.phone });
-      dispatch(updateProfile({ name: form.name, phone: form.phone }));
+      dispatch(updateProfile({ name: form.name, phone: form.phone, _userId: userId }));
       setEditing(false);
     } catch {
       alert("Eroare la salvare.");
@@ -120,7 +121,6 @@ function ProfileTab({ isMobile }: { isMobile: boolean }) {
 
       <div className="tt-rule" />
 
-      {/* Fields — 1 col on mobile, 2 col on desktop */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14 }}>
         <div style={{ gridColumn: "1 / -1" }}>
           <label className="tt-label">Nume complet</label>
@@ -197,6 +197,7 @@ function ProfileTab({ isMobile }: { isMobile: boolean }) {
   );
 }
 
+// ── Integrations Tab ──────────────────────────────────────────
 function IntegrationsTab() {
   const queryClient = useQueryClient();
 
@@ -284,17 +285,19 @@ function IntegrationsTab() {
   );
 }
 
+// ── Main Settings Page ────────────────────────────────────────
 export default function SettingsPage() {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const profile = useSelector((s: RootState) => s.profile);
+  const user = useSelector((s: RootState) => s.auth.user);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
-    const h = () => setIsMobile(window.innerWidth < 768)
-    window.addEventListener('resize', h)
-    return () => window.removeEventListener('resize', h)
-  }, [])
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
 
   const location = useLocation();
   const [tab, setTab] = useState<Tab>("profile");
@@ -306,7 +309,6 @@ export default function SettingsPage() {
     currency: profile.currency,
   });
 
-  // Auto-switch to integrations tab if redirected from Google OAuth
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.includes("tab=integrations")) setTab("integrations");
@@ -321,40 +323,40 @@ export default function SettingsPage() {
   };
 
   const fetchAllPages = async (apiFn: (limit: number, offset: number) => Promise<any>) => {
-  const PAGE = 100;
-  let offset = 0;
-  let allData: any[] = [];
-  while (true) {
-    const res = await apiFn(PAGE, offset);
-    allData = [...allData, ...res.data];
-    if (allData.length >= res.total) break;
-    offset += PAGE;
-  }
-  return allData;
-};
+    const PAGE = 100;
+    let offset = 0;
+    let allData: any[] = [];
+    while (true) {
+      const res = await apiFn(PAGE, offset);
+      allData = [...allData, ...res.data];
+      if (allData.length >= res.total) break;
+      offset += PAGE;
+    }
+    return allData;
+  };
 
-const handleExport = async () => {
-  try {
-    const [students, lessons, payments] = await Promise.all([
-      fetchAllPages(studentsApi.getAll),
-      fetchAllPages(lessonsApi.getAll),
-      fetchAllPages(paymentsApi.getAll),
-    ]);
-    const blob = new Blob([JSON.stringify({ profile, students, lessons, payments, exportedAt: new Date().toISOString() }, null, 2)], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `tutor-track-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  } catch (err) {
-    console.error("Export error:", err);
-    alert("Export eșuat: " + (err as any)?.message);
-  }
-};
+  const handleExport = async () => {
+    try {
+      const [students, lessons, payments] = await Promise.all([
+        fetchAllPages(studentsApi.getAll),
+        fetchAllPages(lessonsApi.getAll),
+        fetchAllPages(paymentsApi.getAll),
+      ]);
+      const blob = new Blob([JSON.stringify({ profile, students, lessons, payments, exportedAt: new Date().toISOString() }, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `tutor-track-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (err) {
+      console.error("Export error:", err);
+      alert("Export eșuat: " + (err as any)?.message);
+    }
+  };
 
   const handleClearAll = async () => {
     if (!confirm("Sigur vrei să resetezi sesiunea?")) return;
-    dispatch(clearProfile());
+    dispatch(clearProfile(user?.id));
     navigate("/login");
   };
 
@@ -366,35 +368,12 @@ const handleExport = async () => {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "200px 1fr", gap: isMobile ? 16 : 28, alignItems: "start" }}>
-
-        {/* Nav — horizontal tabs on mobile, vertical on desktop */}
-        <nav style={{
-          display: "flex",
-          flexDirection: isMobile ? "row" : "column",
-          gap: isMobile ? 4 : 1,
-          overflowX: isMobile ? "auto" : "visible",
-          paddingBottom: isMobile ? 4 : 0,
-          borderBottom: isMobile ? "0.5px solid var(--border)" : "none",
-        }}>
+        <nav style={{ display: "flex", flexDirection: isMobile ? "row" : "column", gap: isMobile ? 4 : 1, overflowX: isMobile ? "auto" : "visible", paddingBottom: isMobile ? 4 : 0, borderBottom: isMobile ? "0.5px solid var(--border)" : "none" }}>
           {TABS.map(({ key, label }) => (
             <button
               key={key}
               onClick={() => setTab(key)}
-              style={{
-                padding: isMobile ? "7px 14px" : "8px 12px",
-                borderRadius: 8,
-                textAlign: "left",
-                fontSize: isMobile ? 13 : 13.5,
-                fontWeight: tab === key ? 600 : 500,
-                background: tab === key ? "var(--accent-soft)" : "transparent",
-                color: tab === key ? "var(--accent)" : "var(--text-2)",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "var(--font-text)",
-                transition: "all 120ms",
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-              }}
+              style={{ padding: isMobile ? "7px 14px" : "8px 12px", borderRadius: 8, textAlign: "left", fontSize: isMobile ? 13 : 13.5, fontWeight: tab === key ? 600 : 500, background: tab === key ? "var(--accent-soft)" : "transparent", color: tab === key ? "var(--accent)" : "var(--text-2)", border: "none", cursor: "pointer", fontFamily: "var(--font-text)", transition: "all 120ms", whiteSpace: "nowrap", flexShrink: 0 }}
               onMouseEnter={(e) => { if (tab !== key) { (e.currentTarget as HTMLElement).style.background = "var(--bg-card-hover)"; (e.currentTarget as HTMLElement).style.color = "var(--text-1)"; } }}
               onMouseLeave={(e) => { if (tab !== key) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-2)"; } }}
             >
@@ -403,32 +382,21 @@ const handleExport = async () => {
           ))}
         </nav>
 
-        {/* Content */}
         <div className="tt-card" style={{ padding: isMobile ? 18 : 28 }}>
-          {tab === "profile" && <ProfileTab isMobile={isMobile} />}
+          {tab === "profile" && <ProfileTab isMobile={isMobile} userId={user?.id} />}
 
           {tab === "prices" && (
             <div>
               <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 0, marginBottom: 18 }}>
                 Prețuri implicite la crearea unei lecții
               </p>
-              {/* 1 col on mobile, 3 col on desktop */}
               <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 14 }}>
                 {([60, 90, 120] as const).map((min) => (
                   <div key={min}>
                     <label className="tt-label">{min} minute</label>
                     <div style={{ position: "relative" }}>
-                      <input
-                        name={`defaultPrice${min}`}
-                        type="number"
-                        value={form[`defaultPrice${min}` as keyof typeof form]}
-                        onChange={handleChange}
-                        className="tt-input tabular"
-                        style={{ paddingRight: 50 }}
-                      />
-                      <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--text-3)", fontWeight: 500, pointerEvents: "none" }}>
-                        {form.currency}
-                      </span>
+                      <input name={`defaultPrice${min}`} type="number" value={form[`defaultPrice${min}` as keyof typeof form]} onChange={handleChange} className="tt-input tabular" style={{ paddingRight: 50 }} />
+                      <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--text-3)", fontWeight: 500, pointerEvents: "none" }}>{form.currency}</span>
                     </div>
                   </div>
                 ))}
@@ -443,7 +411,7 @@ const handleExport = async () => {
               </div>
               <div style={{ marginTop: 20 }}>
                 <button
-                  onClick={(e) => { e.preventDefault(); dispatch(updateProfile(form)); setSaved(true); setTimeout(() => setSaved(false), 2000); }}
+                  onClick={(e) => { e.preventDefault(); dispatch(updateProfile({ ...form, _userId: user?.id })); setSaved(true); setTimeout(() => setSaved(false), 2000); }}
                   className="tt-btn tt-btn-primary"
                   style={{ height: 38, width: isMobile ? "100%" : "auto" }}
                 >
@@ -460,18 +428,21 @@ const handleExport = async () => {
               <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 0, marginBottom: 18 }}>
                 Exportă datele tale din baza de date
               </p>
-              <div style={{ display: "flex", gap: 10, marginBottom: 32, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
                 <button onClick={handleExport} className="tt-btn tt-btn-secondary" style={{ height: 36, gap: 7 }}>
                   <IcDownload /> Exportă JSON
                 </button>
-                <div className="tt-rule" style={{ margin: "20px 0" }} />
-                <div>
-                  <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 0, marginBottom: 18 }}>
-                    Importă date dintr-un backup JSON
-                  </p>
-                  <ImportData />
-                </div>
               </div>
+
+              <div className="tt-rule" style={{ marginBottom: 20 }} />
+
+              <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 0, marginBottom: 18 }}>
+                Importă date dintr-un backup JSON
+              </p>
+              <ImportData />
+
+              <div className="tt-rule" style={{ margin: "24px 0" }} />
+
               <div style={{ padding: 18, borderRadius: "var(--r-md)", background: "var(--danger-soft)", border: "0.5px solid color-mix(in srgb, var(--danger) 20%, transparent)" }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "var(--danger)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
                   Zonă periculoasă

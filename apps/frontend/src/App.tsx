@@ -30,19 +30,19 @@ function App() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    dispatch(loadProfileFromStorage());
-
     const token = getToken();
     if (token) {
       apiClient
         .get("/auth/me")
         .then(({ data }) => {
           dispatch(setAuth({ user: data, token }));
+          dispatch(loadProfileFromStorage(data.id));
           dispatch(
             updateProfile({
               name: data.name,
               email: data.email,
               phone: data.phone ?? "",
+              _userId: data.id,
             }),
           );
         })
@@ -55,7 +55,6 @@ function App() {
     }
   }, [dispatch]);
 
-  // Așteaptă verificarea tokenului înainte de render
   if (!ready) {
     return (
       <div
