@@ -10,6 +10,7 @@ import { paymentsApi } from "@/lib/paymentsApi";
 import { googleApi } from "@/lib/googleApi";
 import { apiClient } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import ImportData from "@/components/data/ImportData";
 
 const IcCheck = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -463,6 +464,13 @@ const handleExport = async () => {
                 <button onClick={handleExport} className="tt-btn tt-btn-secondary" style={{ height: 36, gap: 7 }}>
                   <IcDownload /> Exportă JSON
                 </button>
+                <div className="tt-rule" style={{ margin: "20px 0" }} />
+                <div>
+                  <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 0, marginBottom: 18 }}>
+                    Importă date dintr-un backup JSON
+                  </p>
+                  <ImportData />
+                </div>
               </div>
               <div style={{ padding: 18, borderRadius: "var(--r-md)", background: "var(--danger-soft)", border: "0.5px solid color-mix(in srgb, var(--danger) 20%, transparent)" }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "var(--danger)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
