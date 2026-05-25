@@ -4,7 +4,7 @@ import { getInitials } from "@/lib/dateUtils";
 import type { RootState } from "@/store";
 import { useStudents } from "@/queries/useStudents";
 import { useLessons } from "@/queries/useLessons";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import LessonModal from "@/components/lessons/LessonModal";
 
 const IcUsers = () => (
@@ -40,11 +40,6 @@ const IcArrowUp = () => (
     <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
   </svg>
 )
-const IcStar = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-  </svg>
-)
 const IcPlus = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -69,7 +64,7 @@ function StatCard({ label, value, sub, icon, tone = 'default', onClick, delta }:
       onClick={onClick}
       className="tt-card"
       style={{
-        padding: 22, cursor: onClick ? 'pointer' : 'default',
+        padding: 18, cursor: onClick ? 'pointer' : 'default',
         background: isAmber ? 'var(--warning-soft)' : 'var(--bg-card)',
         border: isAmber ? '0.5px solid color-mix(in srgb, var(--warning) 25%, transparent)' : '0.5px solid var(--border)',
         transition: 'all 120ms ease',
@@ -78,21 +73,19 @@ function StatCard({ label, value, sub, icon, tone = 'default', onClick, delta }:
       onMouseEnter={e => { if (onClick) (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-pop)' }}
       onMouseLeave={e => { if (onClick) (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-card)' }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <span style={{
-          fontSize: 12, fontWeight: 500, letterSpacing: '-0.005em',
+          fontSize: 11.5, fontWeight: 500, letterSpacing: '-0.005em',
           color: isAmber ? 'var(--warning-strong)' : 'var(--text-2)',
         }}>{label}</span>
         <span style={{ color: isAmber ? 'var(--warning)' : 'var(--text-3)', opacity: 0.8 }}>{icon}</span>
       </div>
-
       <div className="tt-metric" style={{
-        fontSize: 34,
+        fontSize: 28,
         color: isAmber ? 'var(--warning-strong)' : isTeal ? 'var(--accent)' : 'var(--text-1)',
       }}>{value}</div>
-
       {sub && (
-        <div style={{ fontSize: 12, color: isAmber ? 'var(--warning-strong)' : 'var(--text-3)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+        <div style={{ fontSize: 11.5, color: isAmber ? 'var(--warning-strong)' : 'var(--text-3)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
           {delta != null && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: delta >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
               <IcArrowUp /> {Math.abs(delta)}%
@@ -109,6 +102,13 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const profile  = useSelector((s: RootState) => s.profile)
   const [lessonModal, setLessonModal] = useState(false)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', h)
+    return () => window.removeEventListener('resize', h)
+  }, [])
 
   const currentMonth = new Date().toISOString().slice(0, 7)
   const currentWeekStart = (() => {
@@ -144,19 +144,19 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ padding: '32px 36px 60px', maxWidth: 1280 }}>
+    <div style={{ padding: isMobile ? '20px 16px 60px' : '32px 36px 60px', maxWidth: 1280 }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 32, gap: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: isMobile ? 20 : 32, gap: 12, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{
-            fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 600,
+            fontFamily: 'var(--font-display)', fontSize: isMobile ? 24 : 30, fontWeight: 600,
             letterSpacing: '-0.03em', color: 'var(--text-1)', lineHeight: 1.1, margin: 0,
           }}>
             {greeting()},{' '}
             <span style={{ color: 'var(--accent)' }}>{profile.name.split(' ')[0] || 'Tutor'}</span>
           </h1>
-          <p style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 6, letterSpacing: '-0.01em' }}>
+          <p style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 5, letterSpacing: '-0.01em' }}>
             {new Date().toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
@@ -165,8 +165,13 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* Stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+      {/* Stat cards — 2x2 on mobile, 4x1 on desktop */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+        gap: isMobile ? 10 : 14,
+        marginBottom: 20,
+      }}>
         <StatCard
           label="Studenți activi" value={activeStudents.length}
           sub={`din ${students.length} total`}
@@ -193,21 +198,25 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Two-column body */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 16 }}>
+      {/* Two-column body — stacked on mobile */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : '1.5fr 1fr',
+        gap: 16,
+      }}>
 
         {/* Recent activity */}
         <div className="tt-card" style={{ padding: 0 }}>
-          <div style={{ padding: '16px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-1)' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 14.5, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-1)' }}>
                 Activitate recentă
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>Ultimele lecții logate</div>
             </div>
             <button
               onClick={() => navigate('/lessons')}
-              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, color: 'var(--accent)', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, color: 'var(--accent)', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
             >
               Toate lecțiile <IcChevRight />
             </button>
@@ -215,7 +224,7 @@ export default function DashboardPage() {
           <div className="tt-rule" />
 
           {recentActivity.length === 0 ? (
-            <div style={{ padding: '40px 22px', textAlign: 'center' }}>
+            <div style={{ padding: '40px 18px', textAlign: 'center' }}>
               <p style={{ fontSize: 13.5, color: 'var(--text-3)' }}>Nicio activitate încă</p>
               <button onClick={() => setLessonModal(true)} style={{ marginTop: 10, fontSize: 13, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer' }}>
                 Adaugă prima lecție →
@@ -230,33 +239,40 @@ export default function DashboardPage() {
                   key={lesson.id}
                   onClick={() => navigate(`/students/${lesson.studentId}`)}
                   style={{
-                    display: 'grid', gridTemplateColumns: '52px 1fr auto auto',
-                    alignItems: 'center', gap: 14, padding: '13px 22px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: isMobile ? 10 : 14,
+                    padding: isMobile ? '12px 14px' : '13px 18px',
                     borderBottom: idx < recentActivity.length - 1 ? '0.5px solid var(--border)' : 'none',
                     cursor: 'pointer', transition: 'background 120ms',
                   }}
                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg-card-hover)'}
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
                 >
-                  <div style={{ textAlign: 'center' }}>
-                    <div className="tt-metric" style={{ fontSize: 20, color: 'var(--text-1)' }}>{day}</div>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 2 }}>{mon}</div>
+                  {/* Date */}
+                  <div style={{ textAlign: 'center', minWidth: 38, flexShrink: 0 }}>
+                    <div className="tt-metric" style={{ fontSize: 18, color: 'var(--text-1)' }}>{day}</div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 1 }}>{mon}</div>
                   </div>
-                  <div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.01em' }}>
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {student?.name ?? lesson.studentNameSnapshot ?? '—'}
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 2 }}>
                       {lesson.subjectSnapshot} · {lesson.durationMinutes} min · {fmtTime(lesson.date)}
                     </div>
                   </div>
-                  <div className="tabular" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-1)' }}>
-                    {Number(lesson.price).toLocaleString()} {profile.currency}
+                  {/* Price + status — stacked on mobile */}
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-end' : 'center', gap: isMobile ? 4 : 10, flexShrink: 0 }}>
+                    <div className="tabular" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>
+                      {Number(lesson.price).toLocaleString()} {profile.currency}
+                    </div>
+                    <span className={`tt-pill ${lesson.isPaid ? 'tt-pill-paid' : 'tt-pill-unpaid'}`}>
+                      <span className={`tt-dot ${lesson.isPaid ? 'tt-dot-paid' : 'tt-dot-unpaid'}`} />
+                      {lesson.isPaid ? 'Achitat' : 'Neachitat'}
+                    </span>
                   </div>
-                  <span className={`tt-pill ${lesson.isPaid ? 'tt-pill-paid' : 'tt-pill-unpaid'}`}>
-                    <span className={`tt-dot ${lesson.isPaid ? 'tt-dot-paid' : 'tt-dot-unpaid'}`} />
-                    {lesson.isPaid ? 'Achitat' : 'Neachitat'}
-                  </span>
                 </div>
               )
             })
@@ -265,9 +281,9 @@ export default function DashboardPage() {
 
         {/* Active students */}
         <div className="tt-card" style={{ padding: 0 }}>
-          <div style={{ padding: '16px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-1)' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 14.5, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-1)' }}>
                 Studenți activi
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>Ordonați după activitate</div>
@@ -282,7 +298,7 @@ export default function DashboardPage() {
           <div className="tt-rule" />
 
           {activeStudents.length === 0 ? (
-            <div style={{ padding: '40px 22px', textAlign: 'center' }}>
+            <div style={{ padding: '40px 18px', textAlign: 'center' }}>
               <p style={{ fontSize: 13.5, color: 'var(--text-3)' }}>Niciun student activ</p>
               <button onClick={() => navigate('/students')} style={{ marginTop: 10, fontSize: 13, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer' }}>
                 Adaugă primul student →
@@ -297,24 +313,25 @@ export default function DashboardPage() {
                   key={student.id}
                   onClick={() => navigate(`/students/${student.id}`)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 12, padding: '12px 22px',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: isMobile ? '12px 14px' : '12px 18px',
                     borderBottom: idx < activeStudents.slice(0, 6).length - 1 ? '0.5px solid var(--border)' : 'none',
                     cursor: 'pointer', transition: 'background 120ms',
                   }}
                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg-card-hover)'}
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
                 >
-                  <div className="tt-avatar" style={{ width: 36, height: 36, fontSize: 13 }}>
+                  <div className="tt-avatar" style={{ width: 34, height: 34, fontSize: 12, flexShrink: 0 }}>
                     {getInitials(student.name)}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.01em' }}>{student.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{student.name}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 2 }}>
                       {student.subject} · {studentLessons.length} lecții luna aceasta
                     </div>
                   </div>
                   {unpaid > 0 && (
-                    <span className="tt-pill tt-pill-unpaid tabular">{unpaid.toLocaleString()} {profile.currency}</span>
+                    <span className="tt-pill tt-pill-unpaid tabular" style={{ flexShrink: 0 }}>{unpaid.toLocaleString()} {profile.currency}</span>
                   )}
                 </div>
               )
