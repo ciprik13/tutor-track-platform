@@ -287,7 +287,7 @@ export default function LessonsPage() {
       )}
 
       {modalOpen && <LessonModal lesson={editLesson} onClose={() => setModalOpen(false)} />}
-      {calendarImport && <CalendarImport onClose={() => setCalendarImport(false)} />}
+      {calendarImport && <CalendarImport initialMonth={monthFilter} onClose={() => setCalendarImport(false)} />}
     </div>
   );
 }
