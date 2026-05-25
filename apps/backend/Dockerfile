@@ -1,7 +1,8 @@
 # ─── Stage 1: Builder ────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
 
-# Install pnpm globally
+# Install pnpm + OpenSSL (required by Prisma on Alpine)
+RUN apk add --no-cache openssl openssl-dev
 RUN npm install -g pnpm@9
 
 WORKDIR /app
@@ -29,6 +30,8 @@ RUN pnpm --filter backend run build
 # ─── Stage 2: Production ─────────────────────────────────────────────────────
 FROM node:20-alpine AS production
 
+# Install OpenSSL for Prisma at runtime
+RUN apk add --no-cache openssl
 RUN npm install -g pnpm@9
 
 WORKDIR /app
