@@ -333,7 +333,7 @@ export default function SettingsPage() {
       a.click();
       URL.revokeObjectURL(a.href);
     } catch {
-      alert("Export eșuat.");
+      console.error("Export error:", err); alert("Export eșuat: " + (err as any)?.message);
     }
   };
 
