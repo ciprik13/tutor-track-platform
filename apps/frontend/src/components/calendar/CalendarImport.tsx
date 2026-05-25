@@ -23,11 +23,6 @@ export interface CalendarEvent {
 
 type DuplicateKind = 'exact' | 'probable' | null
 
-function extractNameTokens(eventTitle: string): string[] {
-  const namePart = eventTitle.split('|')[0].trim().toLowerCase()
-  return namePart.split(/\s+/).filter(t => t.length > 1)
-}
-
 function guessStudentId(eventTitle: string, students: { id?: any; name: string }[]): string | null {
   const title = eventTitle.toLowerCase()
 
@@ -141,6 +136,7 @@ function mergeConsecutiveEvents(events: CalendarEvent[], students: { id?: any; n
 
 function detectDuplicate(event: CalendarEvent, studentId: string | null, existingLessons: any[]): DuplicateKind {
   const allIds = [event.id, ...(event.mergedIds ?? [])]
+  // Check by googleCalendarEventId across ALL lessons (not just current month)
   if (allIds.some(id => existingLessons.some((l: any) => l.googleCalendarEventId === id))) return 'exact'
   if (studentId && event.start.dateTime) {
     const eventHour = event.start.dateTime.slice(0, 13)
@@ -163,8 +159,10 @@ export default function CalendarImport({ onClose }: Props) {
   const [error, setError] = useState('')
   const [step, setStep] = useState<'select' | 'preview' | 'done'>('select')
   const [importedCount, setImportedCount] = useState(0)
+  const [skippedCount, setSkippedCount] = useState(0)
 
-  const { data: existingLessons = [] } = useLessons({ month })
+  // Fetch ALL lessons (no month filter) for accurate duplicate detection
+  const { data: allExistingLessons = [] } = useLessons()
 
   const handleFetch = async () => {
     setLoading(true)
@@ -182,7 +180,7 @@ export default function CalendarImport({ onClose }: Props) {
         merged
           .filter((e: any) => {
             const sid = guessStudentId(e.summary, students)
-            return sid !== null && detectDuplicate(e, sid, existingLessons) === null
+            return sid !== null && detectDuplicate(e, sid, allExistingLessons) === null
           })
           .map((e: any) => e.id),
       ))
@@ -198,31 +196,43 @@ export default function CalendarImport({ onClose }: Props) {
     setImporting(true)
     const toImport = events.filter(e => selected.has(e.id))
     let count = 0
+    let skipped = 0
     for (const event of toImport) {
       const studentId = guessStudentId(event.summary, students)
-      if (!studentId) continue
+      if (!studentId) { skipped++; continue }
       const duration = guessDuration(event)
       const price = duration === 60 ? profile.defaultPrice60 : duration === 90 ? profile.defaultPrice90 : profile.defaultPrice120
-      await createLesson.mutateAsync({
-        studentId: String(studentId),
-        date: event.start.dateTime!.slice(0, 16),
-        durationMinutes: duration,
-        price,
-        isPaid: false,
-        googleCalendarEventId: event.mergedIds?.[0] ?? event.id,
-        notes: '',
-      })
-      count++
+      try {
+        await createLesson.mutateAsync({
+          studentId: String(studentId),
+          date: event.start.dateTime!.slice(0, 16),
+          durationMinutes: duration,
+          price,
+          isPaid: false,
+          googleCalendarEventId: event.mergedIds?.[0] ?? event.id,
+          notes: '',
+        })
+        count++
+      } catch (err: any) {
+        // Skip duplicate constraint errors (already exists in DB)
+        const msg = err?.response?.data?.message ?? ''
+        if (msg.includes('Unique constraint') || msg.includes('unique') || err?.response?.status === 409) {
+          skipped++
+        } else {
+          throw err
+        }
+      }
     }
     queryClient.invalidateQueries({ queryKey: ['lessons'] })
     setImportedCount(count)
+    setSkippedCount(skipped)
     setStep('done')
     setImporting(false)
   }
 
   const duplicateCount = events.filter(e => {
     const sid = guessStudentId(e.summary, students)
-    return detectDuplicate(e, sid, existingLessons) !== null
+    return detectDuplicate(e, sid, allExistingLessons) !== null
   }).length
 
   return (
@@ -247,7 +257,6 @@ export default function CalendarImport({ onClose }: Props) {
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
 
-          {/* Step: select */}
           {step === 'select' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <MonthPicker value={month} onChange={setMonth} label="Luna de importat" />
@@ -262,7 +271,6 @@ export default function CalendarImport({ onClose }: Props) {
             </div>
           )}
 
-          {/* Step: preview */}
           {step === 'preview' && (
             <div>
               {events.length === 0 ? (
@@ -288,7 +296,7 @@ export default function CalendarImport({ onClose }: Props) {
                   {events.map(event => {
                     const studentId = guessStudentId(event.summary, students)
                     const student = (students as any[]).find((s: any) => s.id === studentId)
-                    const dupKind = detectDuplicate(event, studentId, existingLessons)
+                    const dupKind = detectDuplicate(event, studentId, allExistingLessons)
                     const isSelected = selected.has(event.id)
                     const isDup = dupKind !== null
                     const duration = guessDuration(event)
@@ -352,7 +360,6 @@ export default function CalendarImport({ onClose }: Props) {
             </div>
           )}
 
-          {/* Step: done */}
           {step === 'done' && (
             <div style={{ textAlign: 'center', padding: '32px 0' }}>
               <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
@@ -363,6 +370,7 @@ export default function CalendarImport({ onClose }: Props) {
               <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-1)', fontFamily: 'var(--font-display)' }}>Import finalizat!</div>
               <div style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 6 }}>
                 {importedCount} {importedCount === 1 ? 'lecție adăugată' : 'lecții adăugate'}
+                {skippedCount > 0 && ` · ${skippedCount} sărite (duplicate)`}
               </div>
             </div>
           )}
