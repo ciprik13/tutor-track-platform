@@ -29,20 +29,73 @@ function extractNameTokens(eventTitle: string): string[] {
 }
 
 function guessStudentId(eventTitle: string, students: { id?: any; name: string }[]): string | null {
-  const tokens = extractNameTokens(eventTitle)
+  const title = eventTitle.toLowerCase()
+
+  // ── Step 1: Extract name part ────────────────────────────────
+  let namePart = title
+  if (title.includes('|')) {
+    const parts = title.split('|').map(p => p.trim())
+    const subjectWords = ['clasa', 'mate', 'math', 'english', 'individual', 'grup',
+      'online', 'fizica', 'chimie', 'biologie', 'istorie', 'romana', 'geografie', 'informatica']
+    namePart = parts.find(p =>
+      !subjectWords.some(sw => p.startsWith(sw)) && !/^\d/.test(p)
+    ) ?? parts[parts.length - 1]
+  }
+  namePart = namePart.trim()
+
+  // ── Step 2: Initials pattern e.g. "M&D", "A/B" ──────────────
+  const initialsMatch = namePart.match(/^([a-z])[\s&\/\+\-]([a-z])$/i)
+  if (initialsMatch) {
+    const init1 = initialsMatch[1].toLowerCase()
+    const init2 = initialsMatch[2].toLowerCase()
+    for (const student of students) {
+      const words = student.name.toLowerCase().split(/[\s\-]+/).filter(w => w.length > 1)
+      const initials = words.map(w => w[0])
+      if (initials.includes(init1) && initials.includes(init2)) {
+        return student.id ? String(student.id) : null
+      }
+    }
+  }
+
+  // ── Step 3: Multiple initials e.g. "M&D&A" ──────────────────
+  if (/^[a-z]([\s&\/\+\-][a-z])+$/i.test(namePart)) {
+    const initials = namePart.match(/[a-z]/gi)?.map(c => c.toLowerCase()) ?? []
+    for (const student of students) {
+      const words = student.name.toLowerCase().split(/[\s\-]+/).filter(w => w.length > 1)
+      const studentInitials = words.map(w => w[0])
+      if (initials.every(i => studentInitials.includes(i))) {
+        return student.id ? String(student.id) : null
+      }
+    }
+  }
+
+  // ── Step 4: Direct token match ───────────────────────────────
+  const tokens = namePart.split(/[\s\-&\/\+]+/).filter(t => t.length > 1)
   for (const student of students) {
-    const parts = student.name.toLowerCase().split(/\s+/)
-    if (tokens.some(token => parts.some(part => part.length > 1 && part === token))) {
+    const studentWords = student.name.toLowerCase().split(/[\s\-]+/)
+    if (tokens.some(token => studentWords.some(word => word.length > 1 && word === token))) {
       return student.id ? String(student.id) : null
     }
   }
-  const namePart = eventTitle.split('|')[0].trim().toLowerCase()
+
+  // ── Step 5: Substring match ──────────────────────────────────
   for (const student of students) {
-    const parts = student.name.toLowerCase().split(/\s+/)
-    if (parts.some(part => part.length > 2 && namePart.includes(part))) {
+    const studentWords = student.name.toLowerCase().split(/[\s\-]+/)
+    if (studentWords.some(word => word.length > 2 && namePart.includes(word))) {
       return student.id ? String(student.id) : null
     }
   }
+
+  // ── Step 6: Event token in student name ─────────────────────
+  for (const token of tokens) {
+    if (token.length < 3) continue
+    for (const student of students) {
+      if (student.name.toLowerCase().includes(token)) {
+        return student.id ? String(student.id) : null
+      }
+    }
+  }
+
   return null
 }
 
