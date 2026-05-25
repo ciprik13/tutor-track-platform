@@ -78,7 +78,6 @@ export default function ImportData() {
       const text = await file.text();
       const json = JSON.parse(text);
 
-      // Validate structure
       if (!json.students || !json.lessons) {
         throw new Error("Fișierul nu are structura corectă (lipsesc students sau lessons)");
       }
@@ -88,9 +87,8 @@ export default function ImportData() {
 
       setParsed({ students: json.students, lessons: json.lessons, exportedAt: json.exportedAt });
 
-      // Fetch existing data for dedup
       setProgress({ done: 0, total: 0, current: "Se verifică datele existente..." });
-      setState("importing"); // temp loading state
+      setState("importing");
 
       const [existingStudents, existingLessons] = await Promise.all([
         fetchAllPages(studentsApi.getAll),
@@ -98,19 +96,27 @@ export default function ImportData() {
       ]);
 
       const existingStudentIds = new Set(existingStudents.map((s: any) => s.id));
+      // Dedup students by name (case-insensitive) — IDs may differ after reimport
+      const existingStudentNames = new Set(
+        existingStudents.map((s: any) => s.name.toLowerCase().trim())
+      );
       const existingLessonIds = new Set(existingLessons.map((l: any) => l.id));
-
-      // Also dedup by googleCalendarEventId for lessons
       const existingGcalIds = new Set(
         existingLessons
           .filter((l: any) => l.googleCalendarEventId)
           .map((l: any) => l.googleCalendarEventId)
       );
 
-      const studentsNew = json.students.filter((s: any) => !existingStudentIds.has(s.id));
+      const studentsNew = json.students.filter(
+        (s: any) =>
+          !existingStudentIds.has(s.id) &&
+          !existingStudentNames.has(s.name.toLowerCase().trim())
+      );
       const studentsSkipped = json.students.length - studentsNew.length;
       const lessonsNew = json.lessons.filter(
-        (l: any) => !existingLessonIds.has(l.id) && (!l.googleCalendarEventId || !existingGcalIds.has(l.googleCalendarEventId))
+        (l: any) =>
+          !existingLessonIds.has(l.id) &&
+          (!l.googleCalendarEventId || !existingGcalIds.has(l.googleCalendarEventId))
       );
       const lessonsSkipped = json.lessons.length - lessonsNew.length;
 
@@ -134,11 +140,9 @@ export default function ImportData() {
     let lessonsCreated = 0;
     let skipped = 0;
 
-    // Build studentId mapping (old id → new id if student was just created)
     const studentIdMap: Record<string, string> = {};
 
     try {
-      // Import students first
       for (const student of parsed.students) {
         setProgress({ done, total, current: `Student: ${student.name}` });
         try {
@@ -160,7 +164,6 @@ export default function ImportData() {
         setProgress({ done, total, current: `Student: ${student.name}` });
       }
 
-      // Import lessons — map studentId if needed
       for (const lesson of parsed.lessons) {
         const mappedStudentId = studentIdMap[lesson.studentId] ?? lesson.studentId;
         setProgress({ done, total, current: `Lecție: ${lesson.studentNameSnapshot} — ${lesson.date?.slice(0, 10)}` });
@@ -182,7 +185,6 @@ export default function ImportData() {
         setProgress({ done, total, current: `Lecție: ${lesson.studentNameSnapshot}` });
       }
 
-      // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ["students"] });
       queryClient.invalidateQueries({ queryKey: ["lessons"] });
       queryClient.invalidateQueries({ queryKey: ["payments"] });
@@ -210,26 +212,15 @@ export default function ImportData() {
 
   return (
     <div>
-      <input
-        ref={fileRef}
-        type="file"
-        accept=".json"
-        onChange={handleFileSelect}
-        style={{ display: "none" }}
-      />
+      <input ref={fileRef} type="file" accept=".json" onChange={handleFileSelect} style={{ display: "none" }} />
 
-      {/* ── Idle ── */}
       {state === "idle" && (
         <div>
           <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 0, marginBottom: 18 }}>
             Importă date dintr-un fișier JSON exportat anterior din TutorTrack.
             Înregistrările existente nu vor fi suprascrise.
           </p>
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="tt-btn tt-btn-secondary"
-            style={{ height: 36, gap: 7 }}
-          >
+          <button onClick={() => fileRef.current?.click()} className="tt-btn tt-btn-secondary" style={{ height: 36, gap: 7 }}>
             <IcUpload /> Selectează fișier JSON
           </button>
           <div style={{ marginTop: 14, padding: "12px 14px", background: "var(--bg-page)", borderRadius: "var(--r-md)", border: "0.5px solid var(--border)", fontSize: 12.5, color: "var(--text-3)", lineHeight: 1.6 }}>
@@ -239,7 +230,6 @@ export default function ImportData() {
         </div>
       )}
 
-      {/* ── Loading / checking ── */}
       {state === "importing" && !result && (
         <div>
           <p style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 16 }}>
@@ -257,7 +247,6 @@ export default function ImportData() {
         </div>
       )}
 
-      {/* ── Preview ── */}
       {state === "preview" && preview && (
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
@@ -298,9 +287,7 @@ export default function ImportData() {
           )}
 
           <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={handleReset} className="tt-btn tt-btn-secondary" style={{ height: 38 }}>
-              Anulează
-            </button>
+            <button onClick={handleReset} className="tt-btn tt-btn-secondary" style={{ height: 38 }}>Anulează</button>
             {(preview.studentsNew > 0 || preview.lessonsNew > 0) && (
               <button onClick={handleImport} className="tt-btn tt-btn-primary" style={{ height: 38 }}>
                 <IcUpload /> Importă {preview.studentsNew + preview.lessonsNew} înregistrări
@@ -310,7 +297,6 @@ export default function ImportData() {
         </div>
       )}
 
-      {/* ── Done ── */}
       {state === "done" && result && (
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 18px", background: "color-mix(in srgb, var(--success) 10%, transparent)", borderRadius: "var(--r-lg)", border: "0.5px solid color-mix(in srgb, var(--success) 25%, transparent)", marginBottom: 18 }}>
@@ -329,7 +315,6 @@ export default function ImportData() {
         </div>
       )}
 
-      {/* ── Error ── */}
       {state === "error" && error && (
         <div>
           <div style={{ padding: "14px 16px", background: "var(--danger-soft)", borderRadius: "var(--r-md)", border: "0.5px solid color-mix(in srgb, var(--danger) 20%, transparent)", fontSize: 13, color: "var(--danger-strong)", marginBottom: 16 }}>

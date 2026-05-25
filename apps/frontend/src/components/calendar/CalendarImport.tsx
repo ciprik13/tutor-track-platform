@@ -9,6 +9,7 @@ import MonthPicker from '@/components/ui/MonthPicker'
 
 interface Props {
   onClose: () => void
+  initialMonth?: string
 }
 
 export interface CalendarEvent {
@@ -145,13 +146,13 @@ function detectDuplicate(event: CalendarEvent, studentId: string | null, existin
   return null
 }
 
-export default function CalendarImport({ onClose }: Props) {
+export default function CalendarImport({ onClose, initialMonth }: Props) {
+  const [month, setMonth] = useState(initialMonth ?? new Date().toISOString().slice(0, 7))
   const profile = useSelector((s: RootState) => s.profile)
   const { data: students = [] } = useStudents()
   const createLesson = useCreateLesson()
   const queryClient = useQueryClient()
 
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7))
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
