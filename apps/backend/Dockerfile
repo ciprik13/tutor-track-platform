@@ -15,10 +15,8 @@ RUN pnpm install --filter backend --frozen-lockfile
 
 COPY apps/backend/ ./apps/backend/
 
-# Generate prisma client and verify it was created
-RUN cd apps/backend && npx prisma generate --schema=./prisma/schema.prisma
-RUN ls -la /app/apps/backend/node_modules/.prisma || echo "WARNING: .prisma not found"
-RUN ls -la /app/node_modules/.prisma || echo "WARNING: root .prisma not found"
+# Use local prisma binary (v5.22.0) not npx which downloads latest
+RUN cd apps/backend && ./node_modules/.bin/prisma generate --schema=./prisma/schema.prisma
 
 RUN pnpm --filter backend run build
 
@@ -40,11 +38,11 @@ RUN pnpm install --filter backend --frozen-lockfile --prod
 COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
 COPY apps/backend/prisma ./apps/backend/prisma
 
-# Regenerate prisma client directly in production (simplest approach)
-RUN cd apps/backend && npx prisma generate --schema=./prisma/schema.prisma
+# Use local prisma binary (v5.22.0) not npx
+RUN cd apps/backend && ./node_modules/.bin/prisma generate --schema=./prisma/schema.prisma
 
 WORKDIR /app/apps/backend
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy --schema=./prisma/schema.prisma && node dist/main.js"]
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy --schema=./prisma/schema.prisma && node dist/main.js"]
