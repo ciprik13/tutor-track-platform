@@ -89,6 +89,7 @@ model Student {
   phone   String?
   email   String?
   notes   String?
+  priceOverride Decimal? @db.Decimal(10, 2) @map("price_override")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
