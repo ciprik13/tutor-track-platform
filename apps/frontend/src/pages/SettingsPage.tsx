@@ -8,7 +8,8 @@ import { studentsApi } from "@/lib/studentsApi";
 import { lessonsApi } from "@/lib/lessonsApi";
 import { paymentsApi } from "@/lib/paymentsApi";
 import { googleApi } from "@/lib/googleApi";
-import { apiClient } from "@/lib/api";
+import { apiClient, clearToken } from "@/lib/api";
+import { clearAuth } from "@/store/slices/authSlice";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import ImportData from "@/components/data/ImportData";
 
@@ -285,12 +286,95 @@ function IntegrationsTab() {
   );
 }
 
+// ── Reset Confirmation Dialog ─────────────────────────────────
+function ResetDialog({ onConfirm, onCancel, resetting }: {
+  onConfirm: () => void;
+  onCancel: () => void;
+  resetting: boolean;
+}) {
+  return (
+    <div
+      onClick={(e) => e.target === e.currentTarget && !resetting && onCancel()}
+      style={{
+        position: "fixed", inset: 0, zIndex: 300,
+        background: "var(--bg-overlay)", backdropFilter: "blur(6px)",
+        display: "grid", placeItems: "center", padding: 20,
+      }}
+    >
+      <div style={{
+        width: "100%", maxWidth: 420,
+        background: "var(--bg-card)", borderRadius: "var(--r-xl)",
+        border: "0.5px solid color-mix(in srgb, var(--danger) 30%, transparent)",
+        boxShadow: "var(--shadow-modal)", padding: "28px 28px 24px",
+      }}>
+        {/* Icon */}
+        <div style={{
+          width: 48, height: 48, borderRadius: "var(--r-lg)",
+          background: "var(--danger-soft)", display: "grid",
+          placeItems: "center", marginBottom: 16,
+        }}>
+          <IcTrash />
+        </div>
+
+        <h2 style={{ fontSize: 17, fontWeight: 600, color: "var(--text-1)", margin: "0 0 8px", fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}>
+          Resetează sesiunea
+        </h2>
+        <p style={{ fontSize: 13.5, color: "var(--text-2)", margin: "0 0 6px", lineHeight: 1.6 }}>
+          Această acțiune va șterge <strong style={{ color: "var(--text-1)" }}>toți studenții, toate lecțiile și toate plățile</strong> din baza de date.
+        </p>
+        <p style={{ fontSize: 13, color: "var(--text-3)", margin: "0 0 20px", lineHeight: 1.6 }}>
+          Un backup JSON va fi descărcat automat înainte de ștergere. Acțiunea nu poate fi anulată.
+        </p>
+
+        {/* Progres dacă resetează */}
+        {resetting && (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 12.5, color: "var(--text-2)", marginBottom: 8 }}>
+              Se generează backup și se șterg datele...
+            </div>
+            <div style={{ height: 4, background: "var(--bg-page)", borderRadius: 99, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: "100%", background: "var(--danger)", borderRadius: 99, animation: "pulse 1.2s ease-in-out infinite" }} />
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            onClick={onCancel}
+            disabled={resetting}
+            className="tt-btn tt-btn-secondary"
+            style={{ flex: 1, height: 40, justifyContent: "center", opacity: resetting ? 0.5 : 1 }}
+          >
+            Anulează
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={resetting}
+            style={{
+              flex: 1, height: 40, borderRadius: "var(--r-md)",
+              background: resetting ? "color-mix(in srgb, var(--danger) 60%, transparent)" : "var(--danger)",
+              color: "white", fontSize: 14, fontWeight: 600,
+              border: "none", cursor: resetting ? "not-allowed" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+              fontFamily: "var(--font-text)", transition: "opacity 150ms",
+            }}
+          >
+            <IcTrash />
+            {resetting ? "Se resetează..." : "Confirmă resetarea"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Settings Page ────────────────────────────────────────
 export default function SettingsPage() {
-  const dispatch = useDispatch<AppDispatch>();
-  const navigate = useNavigate();
-  const profile = useSelector((s: RootState) => s.profile);
-  const user = useSelector((s: RootState) => s.auth.user);
+  const dispatch    = useDispatch<AppDispatch>();
+  const navigate    = useNavigate();
+  const queryClient = useQueryClient();
+  const profile     = useSelector((s: RootState) => s.profile);
+  const user        = useSelector((s: RootState) => s.auth.user);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
@@ -300,13 +384,15 @@ export default function SettingsPage() {
   }, []);
 
   const location = useLocation();
-  const [tab, setTab] = useState<Tab>("profile");
-  const [saved, setSaved] = useState(false);
+  const [tab, setTab]           = useState<Tab>("profile");
+  const [saved, setSaved]       = useState(false);
+  const [resetDialog, setResetDialog] = useState(false);
+  const [resetting, setResetting]     = useState(false);
   const [form, setForm] = useState({
-    defaultPrice60: profile.defaultPrice60,
-    defaultPrice90: profile.defaultPrice90,
+    defaultPrice60:  profile.defaultPrice60,
+    defaultPrice90:  profile.defaultPrice90,
     defaultPrice120: profile.defaultPrice120,
-    currency: profile.currency,
+    currency:        profile.currency,
   });
 
   useEffect(() => {
@@ -342,7 +428,10 @@ export default function SettingsPage() {
         fetchAllPages(lessonsApi.getAll),
         fetchAllPages(paymentsApi.getAll),
       ]);
-      const blob = new Blob([JSON.stringify({ profile, students, lessons, payments, exportedAt: new Date().toISOString() }, null, 2)], { type: "application/json" });
+      const blob = new Blob(
+        [JSON.stringify({ profile, students, lessons, payments, exportedAt: new Date().toISOString() }, null, 2)],
+        { type: "application/json" }
+      );
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = `tutor-track-backup-${new Date().toISOString().slice(0, 10)}.json`;
@@ -354,118 +443,173 @@ export default function SettingsPage() {
     }
   };
 
-  const handleClearAll = async () => {
-    if (!confirm("Sigur vrei să resetezi sesiunea?")) return;
-    dispatch(clearProfile(user?.id));
-    navigate("/login");
+  // ── REQ-04: Reset cu backup automat ───────────────────────
+  const handleClearAll = () => setResetDialog(true);
+
+  const handleConfirmReset = async () => {
+    setResetting(true);
+    try {
+      // 1. Fetch toate datele
+      const [students, lessons, payments] = await Promise.all([
+        fetchAllPages(studentsApi.getAll),
+        fetchAllPages(lessonsApi.getAll),
+        fetchAllPages(paymentsApi.getAll),
+      ]);
+
+      // 2. Descarcă backup ÎNAINTE de orice ștergere
+      const backup = {
+        profile, students, lessons, payments,
+        exportedAt: new Date().toISOString(),
+      };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `tutortrack-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+
+      // 3. Mică pauză — browser-ul să înceapă descărcarea
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      // 4. Soft delete în ordine corectă: payments → lessons → students
+      await Promise.all(payments.map((p: any) => paymentsApi.remove(p.id)));
+      await Promise.all(lessons.map((l: any)  => lessonsApi.remove(l.id)));
+      await Promise.all(students.map((s: any) => studentsApi.remove(s.id)));
+
+      // 5. Curăță sesiunea locală
+      queryClient.clear();
+      clearToken();
+      dispatch(clearAuth());
+      dispatch(clearProfile(user?.id));
+      navigate("/login");
+
+    } catch (err) {
+      console.error("Reset error:", err);
+      setResetting(false);
+      setResetDialog(false);
+      alert("Eroare la resetare: " + (err as any)?.message);
+    }
   };
 
   return (
-    <div style={{ padding: isMobile ? "20px 16px 60px" : "28px 36px 60px", maxWidth: 1100 }}>
-      <div style={{ marginBottom: isMobile ? 16 : 28 }}>
-        <h1 className="tt-page-title">Setări</h1>
-        <p className="tt-page-sub">Profilul tău, prețuri și integrări</p>
-      </div>
+    <>
+      {/* Dialog confirmare reset */}
+      {resetDialog && (
+        <ResetDialog
+          onConfirm={handleConfirmReset}
+          onCancel={() => !resetting && setResetDialog(false)}
+          resetting={resetting}
+        />
+      )}
 
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "200px 1fr", gap: isMobile ? 16 : 28, alignItems: "start" }}>
-        <nav style={{ display: "flex", flexDirection: isMobile ? "row" : "column", gap: isMobile ? 4 : 1, overflowX: isMobile ? "auto" : "visible", paddingBottom: isMobile ? 4 : 0, borderBottom: isMobile ? "0.5px solid var(--border)" : "none" }}>
-          {TABS.map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              style={{ padding: isMobile ? "7px 14px" : "8px 12px", borderRadius: 8, textAlign: "left", fontSize: isMobile ? 13 : 13.5, fontWeight: tab === key ? 600 : 500, background: tab === key ? "var(--accent-soft)" : "transparent", color: tab === key ? "var(--accent)" : "var(--text-2)", border: "none", cursor: "pointer", fontFamily: "var(--font-text)", transition: "all 120ms", whiteSpace: "nowrap", flexShrink: 0 }}
-              onMouseEnter={(e) => { if (tab !== key) { (e.currentTarget as HTMLElement).style.background = "var(--bg-card-hover)"; (e.currentTarget as HTMLElement).style.color = "var(--text-1)"; } }}
-              onMouseLeave={(e) => { if (tab !== key) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-2)"; } }}
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
+      <div style={{ padding: isMobile ? "20px 16px 60px" : "28px 36px 60px", maxWidth: 1100 }}>
+        <div style={{ marginBottom: isMobile ? 16 : 28 }}>
+          <h1 className="tt-page-title">Setări</h1>
+          <p className="tt-page-sub">Profilul tău, prețuri și integrări</p>
+        </div>
 
-        <div className="tt-card" style={{ padding: isMobile ? 18 : 28 }}>
-          {tab === "profile" && <ProfileTab isMobile={isMobile} userId={user?.id} />}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "200px 1fr", gap: isMobile ? 16 : 28, alignItems: "start" }}>
+          <nav style={{ display: "flex", flexDirection: isMobile ? "row" : "column", gap: isMobile ? 4 : 1, overflowX: isMobile ? "auto" : "visible", paddingBottom: isMobile ? 4 : 0, borderBottom: isMobile ? "0.5px solid var(--border)" : "none" }}>
+            {TABS.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                style={{ padding: isMobile ? "7px 14px" : "8px 12px", borderRadius: 8, textAlign: "left", fontSize: isMobile ? 13 : 13.5, fontWeight: tab === key ? 600 : 500, background: tab === key ? "var(--accent-soft)" : "transparent", color: tab === key ? "var(--accent)" : "var(--text-2)", border: "none", cursor: "pointer", fontFamily: "var(--font-text)", transition: "all 120ms", whiteSpace: "nowrap", flexShrink: 0 }}
+                onMouseEnter={(e) => { if (tab !== key) { (e.currentTarget as HTMLElement).style.background = "var(--bg-card-hover)"; (e.currentTarget as HTMLElement).style.color = "var(--text-1)"; } }}
+                onMouseLeave={(e) => { if (tab !== key) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-2)"; } }}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
 
-          {tab === "prices" && (
-            <div>
-              <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 0, marginBottom: 18 }}>
-                Prețuri implicite la crearea unei lecții
-              </p>
-              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 14 }}>
-                {([60, 90, 120] as const).map((min) => (
-                  <div key={min}>
-                    <label className="tt-label">{min} minute</label>
-                    <div style={{ position: "relative" }}>
-                      <input name={`defaultPrice${min}`} type="number" value={form[`defaultPrice${min}` as keyof typeof form]} onChange={handleChange} className="tt-input tabular" style={{ paddingRight: 50 }} />
-                      <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--text-3)", fontWeight: 500, pointerEvents: "none" }}>{form.currency}</span>
+          <div className="tt-card" style={{ padding: isMobile ? 18 : 28 }}>
+            {tab === "profile" && <ProfileTab isMobile={isMobile} userId={user?.id} />}
+
+            {tab === "prices" && (
+              <div>
+                <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 0, marginBottom: 18 }}>
+                  Prețuri implicite la crearea unei lecții
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 14 }}>
+                  {([60, 90, 120] as const).map((min) => (
+                    <div key={min}>
+                      <label className="tt-label">{min} minute</label>
+                      <div style={{ position: "relative" }}>
+                        <input name={`defaultPrice${min}`} type="number" value={form[`defaultPrice${min}` as keyof typeof form]} onChange={handleChange} className="tt-input tabular" style={{ paddingRight: 50 }} />
+                        <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--text-3)", fontWeight: 500, pointerEvents: "none" }}>{form.currency}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ marginTop: 18 }}>
-                <label className="tt-label">Monedă</label>
-                <select name="currency" value={form.currency} onChange={handleChange} className="tt-input" style={{ maxWidth: isMobile ? "100%" : 260 }}>
-                  <option value="MDL">MDL — Leu moldovenesc</option>
-                  <option value="USD">USD — Dolar american</option>
-                  <option value="EUR">EUR — Euro</option>
-                </select>
-              </div>
-              <div style={{ marginTop: 20 }}>
-                <button
-                  onClick={(e) => { e.preventDefault(); dispatch(updateProfile({ ...form, _userId: user?.id })); setSaved(true); setTimeout(() => setSaved(false), 2000); }}
-                  className="tt-btn tt-btn-primary"
-                  style={{ height: 38, width: isMobile ? "100%" : "auto" }}
-                >
-                  {saved ? <><IcCheck /> Salvat!</> : "Salvează prețurile"}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {tab === "integrations" && <IntegrationsTab />}
-
-          {tab === "data" && (
-            <div>
-              <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 0, marginBottom: 18 }}>
-                Exportă datele tale din baza de date
-              </p>
-              <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-                <button onClick={handleExport} className="tt-btn tt-btn-secondary" style={{ height: 36, gap: 7 }}>
-                  <IcDownload /> Exportă JSON
-                </button>
-              </div>
-
-              <div className="tt-rule" style={{ marginBottom: 20 }} />
-
-              <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 0, marginBottom: 18 }}>
-                Importă date dintr-un backup JSON
-              </p>
-              <ImportData />
-
-              <div className="tt-rule" style={{ margin: "24px 0" }} />
-
-              <div style={{ padding: 18, borderRadius: "var(--r-md)", background: "var(--danger-soft)", border: "0.5px solid color-mix(in srgb, var(--danger) 20%, transparent)" }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--danger)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
-                  Zonă periculoasă
+                  ))}
                 </div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                  <div>
-                    <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--text-1)" }}>Resetează sesiunea</div>
-                    <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Curăță profilul local și mergi la login</div>
-                  </div>
+                <div style={{ marginTop: 18 }}>
+                  <label className="tt-label">Monedă</label>
+                  <select name="currency" value={form.currency} onChange={handleChange} className="tt-input" style={{ maxWidth: isMobile ? "100%" : 260 }}>
+                    <option value="MDL">MDL — Leu moldovenesc</option>
+                    <option value="USD">USD — Dolar american</option>
+                    <option value="EUR">EUR — Euro</option>
+                  </select>
+                </div>
+                <div style={{ marginTop: 20 }}>
                   <button
-                    onClick={handleClearAll}
-                    style={{ height: 32, padding: "0 14px", borderRadius: "var(--r-md)", background: "var(--danger-soft)", color: "var(--danger-strong)", border: "0.5px solid color-mix(in srgb, var(--danger) 30%, transparent)", fontSize: 12.5, fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, flexShrink: 0, fontFamily: "var(--font-text)", transition: "opacity 120ms" }}
-                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.75")}
-                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
+                    onClick={(e) => { e.preventDefault(); dispatch(updateProfile({ ...form, _userId: user?.id })); setSaved(true); setTimeout(() => setSaved(false), 2000); }}
+                    className="tt-btn tt-btn-primary"
+                    style={{ height: 38, width: isMobile ? "100%" : "auto" }}
                   >
-                    <IcTrash /> Resetează
+                    {saved ? <><IcCheck /> Salvat!</> : "Salvează prețurile"}
                   </button>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {tab === "integrations" && <IntegrationsTab />}
+
+            {tab === "data" && (
+              <div>
+                <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 0, marginBottom: 18 }}>
+                  Exportă datele tale din baza de date
+                </p>
+                <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+                  <button onClick={handleExport} className="tt-btn tt-btn-secondary" style={{ height: 36, gap: 7 }}>
+                    <IcDownload /> Exportă JSON
+                  </button>
+                </div>
+
+                <div className="tt-rule" style={{ marginBottom: 20 }} />
+
+                <p style={{ fontSize: 13, color: "var(--text-2)", marginTop: 0, marginBottom: 18 }}>
+                  Importă date dintr-un backup JSON
+                </p>
+                <ImportData />
+
+                <div className="tt-rule" style={{ margin: "24px 0" }} />
+
+                <div style={{ padding: 18, borderRadius: "var(--r-md)", background: "var(--danger-soft)", border: "0.5px solid color-mix(in srgb, var(--danger) 20%, transparent)" }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--danger)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
+                    Zonă periculoasă
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div>
+                      <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--text-1)" }}>Resetează sesiunea</div>
+                      <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+                        Descarcă backup automat, șterge toate datele și deconectează
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleClearAll}
+                      style={{ height: 32, padding: "0 14px", borderRadius: "var(--r-md)", background: "var(--danger-soft)", color: "var(--danger-strong)", border: "0.5px solid color-mix(in srgb, var(--danger) 30%, transparent)", fontSize: 12.5, fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, flexShrink: 0, fontFamily: "var(--font-text)", transition: "opacity 120ms" }}
+                      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.75")}
+                      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
+                    >
+                      <IcTrash /> Resetează
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
