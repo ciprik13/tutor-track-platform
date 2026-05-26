@@ -11,7 +11,7 @@ export interface Profile {
 }
 
 export interface Student {
-  id: string
+  id?: string
   tutorId: string
   userAccountId?: string | null
   name: string
@@ -26,6 +26,7 @@ export interface Student {
   deletedAt?: string | null
   createdBy?: string | null
   updatedBy?: string | null
+  priceOverride?: number 
 }
 
 export interface Lesson {

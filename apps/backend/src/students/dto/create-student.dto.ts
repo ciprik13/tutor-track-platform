@@ -1,5 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEmail, IsEnum, IsOptional, IsString,
+  MaxLength, MinLength, IsNumber, Min, Max,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 export enum StudentStatusDto {
   active = 'active',
@@ -45,4 +49,15 @@ export class CreateStudentDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({
+    example: 250,
+    description: 'Preț per ședință specific acestui student. Dacă lipsește, se folosește prețul global din setări.',
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(99999)
+  @Type(() => Number)
+  priceOverride?: number;
 }
