@@ -10,6 +10,7 @@ export interface Student {
   phone?: string;
   email?: string;
   notes?: string;
+  priceOverride?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -29,6 +30,7 @@ export interface CreateStudentPayload {
   phone?: string;
   email?: string;
   notes?: string;
+  priceOverride?: number;
 }
 
 export const studentsApi = {
