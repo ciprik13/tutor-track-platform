@@ -63,6 +63,15 @@ function ProfileTab({ isMobile, userId }: { isMobile: boolean; userId?: string }
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: profile.name, phone: profile.phone });
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  })
+  const [passwordError, setPasswordError]   = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState(false)
+  const [savingPassword, setSavingPassword] = useState(false)
 
   const { data: googleStatus } = useQuery({
     queryKey: ["google-status"],
@@ -103,6 +112,34 @@ function ProfileTab({ isMobile, userId }: { isMobile: boolean; userId?: string }
     display: "flex",
     alignItems: "center",
   };
+
+  const handleChangePassword = async () => {
+    setPasswordError('')
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordError('Parola nouă trebuie să aibă minim 6 caractere')
+      return
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('Parolele noi nu coincid')
+      return
+    }
+    setSavingPassword(true)
+    try {
+      await apiClient.post('/auth/change-password', {
+        currentPassword: passwordForm.currentPassword,
+        newPassword:     passwordForm.newPassword,
+      })
+      setPasswordSuccess(true)
+      setChangingPassword(false)
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      setTimeout(() => setPasswordSuccess(false), 3000)
+    } catch (err: any) {
+      const msg = err.response?.data?.message
+      setPasswordError(Array.isArray(msg) ? msg.join(', ') : msg ?? 'Eroare la schimbarea parolei')
+    } finally {
+      setSavingPassword(false)
+    }
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -181,19 +218,86 @@ function ProfileTab({ isMobile, userId }: { isMobile: boolean; userId?: string }
         </button>
       </div>
 
-      {editing && (
-        <>
-          <div className="tt-rule" />
-          <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={handleCancel} className="tt-btn tt-btn-secondary" style={{ flex: 1, height: 40, justifyContent: "center" }}>
-              Anulează
-            </button>
-            <button onClick={handleSave} disabled={saving} className="tt-btn tt-btn-primary" style={{ flex: 2, height: 40, justifyContent: "center", opacity: saving ? 0.7 : 1 }}>
-              {saving ? "Se salvează..." : "Salvează modificările"}
-            </button>
+      <div className="tt-rule" />
+
+        {/* Schimbare parolă */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+          <div>
+            <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text-1)' }}>Parolă</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+              {passwordSuccess ? '✓ Parola a fost schimbată!' : 'Schimbă parola contului tău'}
+            </div>
           </div>
-        </>
-      )}
+          {!changingPassword && (
+            <button
+              onClick={() => setChangingPassword(true)}
+              className="tt-btn tt-btn-secondary"
+              style={{ height: 34, gap: 7, fontSize: 13 }}
+            >
+              Schimbă parola
+            </button>
+          )}
+        </div>
+
+        {changingPassword && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px', background: 'var(--bg-page)', borderRadius: 'var(--r-md)', border: '0.5px solid var(--border)' }}>
+            <div>
+              <label className="tt-label">Parola curentă</label>
+              <input
+                type="password"
+                value={passwordForm.currentPassword}
+                onChange={e => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                className="tt-input"
+                placeholder="Parola actuală"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="tt-label">Parola nouă</label>
+              <input
+                type="password"
+                value={passwordForm.newPassword}
+                onChange={e => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                className="tt-input"
+                placeholder="Minim 6 caractere"
+              />
+            </div>
+            <div>
+              <label className="tt-label">Confirmă parola nouă</label>
+              <input
+                type="password"
+                value={passwordForm.confirmPassword}
+                onChange={e => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                className="tt-input"
+                placeholder="Repetă parola nouă"
+              />
+            </div>
+
+            {passwordError && (
+              <div style={{ fontSize: 12.5, color: 'var(--danger-strong)', background: 'var(--danger-soft)', padding: '10px 14px', borderRadius: 'var(--r-md)', border: '0.5px solid color-mix(in srgb, var(--danger) 20%, transparent)' }}>
+                {passwordError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => { setChangingPassword(false); setPasswordError(''); setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' }) }}
+                className="tt-btn tt-btn-secondary"
+                style={{ flex: 1, height: 40, justifyContent: 'center' }}
+              >
+                Anulează
+              </button>
+              <button
+                onClick={handleChangePassword}
+                disabled={savingPassword || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
+                className="tt-btn tt-btn-primary"
+                style={{ flex: 1, height: 40, justifyContent: 'center' }}
+              >
+                {savingPassword ? 'Se salvează...' : 'Salvează parola'}
+              </button>
+            </div>
+          </div>
+        )}
     </div>
   );
 }
@@ -449,7 +553,7 @@ export default function SettingsPage() {
   const handleConfirmReset = async () => {
     setResetting(true);
     try {
-      // 1. Fetch toate datele
+      // 1. Fetch toate datele pentru backup
       const [students, lessons, payments] = await Promise.all([
         fetchAllPages(studentsApi.getAll),
         fetchAllPages(lessonsApi.getAll),
@@ -471,15 +575,10 @@ export default function SettingsPage() {
       // 3. Mică pauză — browser-ul să înceapă descărcarea
       await new Promise((resolve) => setTimeout(resolve, 800));
 
-      // 4. Soft delete în ordine corectă: payments → lessons → students
-      await Promise.all(payments.map((p: any) => paymentsApi.remove(p.id)));
-      await Promise.all(lessons.map((l: any)  => lessonsApi.remove(l.id)));
-      await Promise.all(students.map((s: any) => studentsApi.remove(s.id)));
-
-      // 5. Șterge contul utilizatorului curent
+      // 4. Hard delete tot — backend șterge payments, lessons, students, user într-o tranzacție
       await apiClient.delete('/auth/me');
 
-      // 6. Curăță sesiunea locală
+      // 5. Curăță sesiunea locală
       queryClient.clear();
       clearToken();
       dispatch(clearAuth());

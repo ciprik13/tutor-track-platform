@@ -77,13 +77,27 @@ export class AuthController {
     return this.authService.updateMe(user.sub, dto);
   }
 
-  @Delete("me")
+  @Delete('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Delete current user account (soft delete)" })
-  @ApiResponse({ status: 200, description: "Account deleted successfully" })
+  @ApiOperation({ summary: 'Hard delete current user account and all data' })
+  @ApiResponse({ status: 200, description: 'Account permanently deleted' })
   deleteMe(@CurrentUser() user: JwtPayload) {
-    return this.authService.deleteMe(user.sub);
+    return this.authService.hardDeleteMe(user.sub);
+  }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Change password' })
+  @ApiResponse({ status: 200, description: 'Password changed successfully' })
+  @ApiResponse({ status: 401, description: 'Current password incorrect' })
+  changePassword(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: { currentPassword: string; newPassword: string },
+  ) {
+    return this.authService.changePassword(user.sub, dto);
   }
 }

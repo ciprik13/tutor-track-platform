@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ConflictException,
   ForbiddenException,
+  BadRequestException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { PrismaService } from "../prisma/prisma.service";
@@ -166,7 +167,68 @@ export class AuthService {
       where: { id: userId },
       data: { deletedAt: new Date() },
     });
-    return { message: 'Account deleted successfully' };
+    return { message: "Account deleted successfully" };
+  }
+
+  async changePassword(
+    userId: string,
+    dto: { currentPassword: string; newPassword: string },
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId, deletedAt: null },
+    });
+    if (!user || !user.passwordHash) {
+      throw new UnauthorizedException("User not found");
+    }
+
+    const isValid = await bcrypt.compare(
+      dto.currentPassword,
+      user.passwordHash,
+    );
+    if (!isValid) {
+      throw new UnauthorizedException("Parola curentă este incorectă");
+    }
+
+    if (dto.newPassword.length < 6) {
+      throw new BadRequestException(
+        "Parola nouă trebuie să aibă minim 6 caractere",
+      );
+    }
+
+    const newHash = await bcrypt.hash(dto.newPassword, 12);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: newHash },
+    });
+
+    return { message: "Parola a fost schimbată cu succes" };
+  }
+
+  async hardDeleteMe(userId: string) {
+    // Hard delete în ordine corectă
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Audit logs
+      await tx.auditLog.deleteMany({ where: { userId } });
+      // 2. Google calendar token
+      await tx.googleCalendarToken.deleteMany({ where: { tutorId: userId } });
+      // 3. LessonPayments (join table)
+      const payments = await tx.payment.findMany({
+        where: { tutorId: userId },
+      });
+      const paymentIds = payments.map((p) => p.id);
+      await tx.lessonPayment.deleteMany({
+        where: { paymentId: { in: paymentIds } },
+      });
+      // 4. Payments
+      await tx.payment.deleteMany({ where: { tutorId: userId } });
+      // 5. Lessons
+      await tx.lesson.deleteMany({ where: { tutorId: userId } });
+      // 6. Students
+      await tx.student.deleteMany({ where: { tutorId: userId } });
+      // 7. User
+      await tx.user.delete({ where: { id: userId } });
+    });
+    return { message: "Account permanently deleted" };
   }
 
   // ── Private ───────────────────────────────────────────────
