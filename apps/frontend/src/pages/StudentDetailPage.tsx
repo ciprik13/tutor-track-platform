@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getInitials } from "@/lib/dateUtils";
 import { useStudent } from "@/queries/useStudents";
 import { useLessons, useTogglePayment, useDeleteLesson, useUpdateLesson } from "@/queries/useLessons";
-import { usePayments, useDeletePayment } from "@/queries/usePayments";
+import { usePayments, useDeletePayment, useCreateBulkPayment } from "@/queries/usePayments";
 import { useQueryClient } from "@tanstack/react-query";
 import LessonModal from "@/components/lessons/LessonModal";
 import PaymentModal from "@/components/payments/PaymentModal";
@@ -51,6 +51,7 @@ export default function StudentDetailPage() {
   const [paymentModal, setPaymentModal] = useState(false);
   const [editLesson, setEditLesson]     = useState<any | null>(null);
   const [editPayment, setEditPayment]   = useState<any | null>(null);
+  const [bulkConfirmDialog, setBulkConfirmDialog] = useState(false);
 
   const { data: student, isLoading } = useStudent(id ?? '');
   const { data: lessons  = [] }      = useLessons({ studentId: id });
@@ -60,14 +61,25 @@ export default function StudentDetailPage() {
   const deleteLesson  = useDeleteLesson();
   const deletePayment = useDeletePayment();
   const updateLesson  = useUpdateLesson();
+  const createBulkPayment = useCreateBulkPayment();
 
   const unpaidLessons = (lessons as any[]).filter(l => !l.isPaid);
   const unpaidTotal   = unpaidLessons.reduce((s: number, l: any) => s + Number(l.price), 0);
   const paidTotal     = (lessons as any[]).filter(l => l.isPaid).reduce((s: number, l: any) => s + Number(l.price), 0);
 
-  const handleMarkAllPaid = async () => {
-    await Promise.all(unpaidLessons.map((l: any) => updateLesson.mutateAsync({ id: l.id, isPaid: true })));
-    queryClient.invalidateQueries({ queryKey: ['lessons'] });
+  const handleMarkAllPaid = () => {
+    if (unpaidLessons.length === 0) return;
+    setBulkConfirmDialog(true);
+  };
+
+  const handleConfirmBulkPayment = async () => {
+    const month = new Date().toISOString().slice(0, 7);
+    await createBulkPayment.mutateAsync({
+      studentId: id!,
+      month,
+      lessonIds: unpaidLessons.map((l: any) => l.id),
+    });
+    setBulkConfirmDialog(false);
   };
 
   const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -351,6 +363,51 @@ export default function StudentDetailPage() {
           </div>
         )}
       </div>
+
+      {bulkConfirmDialog && (
+    <div
+      onClick={(e) => e.target === e.currentTarget && setBulkConfirmDialog(false)}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300,
+        background: 'var(--bg-overlay)', backdropFilter: 'blur(6px)',
+        display: 'grid', placeItems: 'center', padding: 20,
+      }}
+    >
+      <div style={{
+        width: '100%', maxWidth: 400,
+        background: 'var(--bg-card)', borderRadius: 'var(--r-xl)',
+        border: '0.5px solid var(--border)',
+        boxShadow: 'var(--shadow-modal)', padding: '28px 28px 24px',
+      }}>
+        <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-1)', margin: '0 0 8px', fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>
+          Marchează toate ca achitate
+        </h2>
+        <p style={{ fontSize: 13.5, color: 'var(--text-2)', margin: '0 0 6px', lineHeight: 1.6 }}>
+          Se vor marca <strong style={{ color: 'var(--text-1)' }}>{unpaidLessons.length} lecții</strong> ca achitate.
+        </p>
+        <p style={{ fontSize: 13.5, color: 'var(--text-2)', margin: '0 0 20px', lineHeight: 1.6 }}>
+          Total: <strong style={{ color: 'var(--text-1)' }} className="tabular">{unpaidTotal.toLocaleString()} MDL</strong>
+        </p>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={() => setBulkConfirmDialog(false)}
+            className="tt-btn tt-btn-secondary"
+            style={{ flex: 1, height: 40, justifyContent: 'center' }}
+          >
+            Anulează
+          </button>
+          <button
+            onClick={handleConfirmBulkPayment}
+            disabled={createBulkPayment.isPending}
+            className="tt-btn tt-btn-primary"
+            style={{ flex: 1, height: 40, justifyContent: 'center' }}
+          >
+            {createBulkPayment.isPending ? 'Se procesează...' : 'Confirmă'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
 
       {lessonModal && (
         <LessonModal lesson={editLesson} onClose={() => setLessonModal(false)} />

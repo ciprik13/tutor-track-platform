@@ -476,7 +476,10 @@ export default function SettingsPage() {
       await Promise.all(lessons.map((l: any)  => lessonsApi.remove(l.id)));
       await Promise.all(students.map((s: any) => studentsApi.remove(s.id)));
 
-      // 5. Curăță sesiunea locală
+      // 5. Șterge contul utilizatorului curent
+      await apiClient.delete('/auth/me');
+
+      // 6. Curăță sesiunea locală
       queryClient.clear();
       clearToken();
       dispatch(clearAuth());
