@@ -167,100 +167,57 @@ export default function ImportData() {
 
   // ── Confirm import ─────────────────────────────────────────
   const handleImport = async () => {
-    if (!parsed) return;
-    setState("importing");
+  if (!parsed) return;
+  setState("importing");
 
-    const total = parsed.students.length + parsed.lessons.length + parsed.payments.length;
-    let done = 0;
+  const total = parsed.students.length + parsed.lessons.length + parsed.payments.length;
+  let done = 0;
+  const studentIdMap: Record<string, string> = {};
+  const lessonIdMap: Record<string, string> = {};
+  let studentsCreated = 0;
+  let lessonsCreated = 0;
+  let paymentsCreated = 0;
+  let paymentsSkipped = 0;
+  const errors: string[] = [];
 
-    // Maps: old JSON id → new API id (pentru relații)
-    const studentIdMap: Record<string, string> = {};
-    const lessonIdMap:  Record<string, string> = {};
+  try {
+    // ── 0. Pre-fetch studenți existenți pentru mapping by name ──
+    const existingStudentsRes = await studentsApi.getAll(500, 0);
+    const existingStudents: any[] = existingStudentsRes.data;
+    const nameToId: Record<string, string> = {};
+    existingStudents.forEach((s: any) => {
+      nameToId[s.name.toLowerCase().trim()] = s.id;
+    });
 
-    let studentsCreated = 0;
-    let lessonsCreated  = 0;
-    let paymentsCreated = 0;
-    let paymentsSkipped = 0;
-    const errors: string[] = [];
-
-    try {
-      // ── 1. Studenți ──────────────────────────────────────
-      for (const student of parsed.students) {
-        setProgress({ done, total, current: `Student: ${student.name}` });
-        try {
-          const created = await studentsApi.create({
-            name:          student.name,
-            subject:       student.subject,
-            grade:         student.grade,
-            status:        student.status ?? "active",
-            phone:         student.phone,
-            email:         student.email,
-            notes:         student.notes,
-            priceOverride: student.priceOverride,
-          });
-          studentIdMap[student.id] = created.id;
-          studentsCreated++;
-        } catch (err: any) {
+    // ── 1. Studenți ──────────────────────────────────────────
+    for (const student of parsed.students) {
+      setProgress({ done, total, current: `Student: ${student.name}` });
+      try {
+        const created = await studentsApi.create({
+          name:          student.name,
+          subject:       student.subject,
+          grade:         student.grade,
+          status:        student.status ?? "active",
+          phone:         student.phone,
+          email:         student.email,
+          notes:         student.notes,
+          priceOverride: student.priceOverride,
+        });
+        studentIdMap[student.id] = created.id;
+        nameToId[student.name.toLowerCase().trim()] = created.id;
+        studentsCreated++;
+      } catch (err: any) {
+        // Student există deja — găsim ID-ul după nume
+        const existingId = nameToId[student.name.toLowerCase().trim()];
+        if (existingId) {
+          studentIdMap[student.id] = existingId;
+        } else {
           errors.push(`Student "${student.name}": ${err.response?.data?.message ?? err.message}`);
         }
-        done++;
-        setProgress({ done, total, current: `Student: ${student.name}` });
       }
-
-      // ── 2. Lecții ────────────────────────────────────────
-      for (const lesson of parsed.lessons) {
-        const mappedStudentId = studentIdMap[lesson.studentId] ?? lesson.studentId;
-        setProgress({ done, total, current: `Lecție: ${lesson.studentNameSnapshot} — ${lesson.date?.slice(0, 10)}` });
-        try {
-          const created = await lessonsApi.create({
-            studentId:             mappedStudentId,
-            date:                  lesson.date,
-            durationMinutes:       lesson.durationMinutes,
-            price:                 Number(lesson.price),
-            isPaid:                lesson.isPaid ?? false,
-            googleCalendarEventId: lesson.googleCalendarEventId ?? null,
-            notes:                 lesson.notes,
-          });
-          lessonIdMap[lesson.id] = created.id;
-          lessonsCreated++;
-        } catch (err: any) {
-          errors.push(`Lecție "${lesson.date?.slice(0, 10)}": ${err.response?.data?.message ?? err.message}`);
-        }
-        done++;
-        setProgress({ done, total, current: `Lecție: ${lesson.studentNameSnapshot}` });
-      }
-
-      // ── 3. Plăți ─────────────────────────────────────────
-      for (const payment of parsed.payments) {
-        const mappedStudentId = studentIdMap[payment.studentId] ?? payment.studentId;
-        const mappedLessonId  = lessonIdMap[payment.lessonId]   ?? payment.lessonId;
-
-        setProgress({ done, total, current: `Plată: ${payment.month}` });
-        try {
-          // Verificăm că lecția există în DB (poate fi lecție veche deja existentă)
-          if (!mappedLessonId) {
-            paymentsSkipped++;
-            errors.push(`Plată pentru luna ${payment.month}: lecția asociată nu a fost găsită`);
-            done++;
-            continue;
-          }
-
-          await paymentsApi.create({
-            studentId: mappedStudentId,
-            lessonId:  mappedLessonId,
-            amount:    Number(payment.amount),
-            month:     payment.month,
-            status:    payment.status ?? "unpaid",
-            paidAt:    payment.paidAt,
-          });
-          paymentsCreated++;
-        } catch (err: any) {
-          paymentsSkipped++;
-          errors.push(`Plată "${payment.month}": ${err.response?.data?.message ?? err.message}`);
-        }
-        done++;
-        setProgress({ done, total, current: `Plată: ${payment.month}` });
-      }
+      done++;
+      setProgress({ done, total, current: `Student: ${student.name}` });
+    }
 
       queryClient.invalidateQueries({ queryKey: ["students"] });
       queryClient.invalidateQueries({ queryKey: ["lessons"] });
