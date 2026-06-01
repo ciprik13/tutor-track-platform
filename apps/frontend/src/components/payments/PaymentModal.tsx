@@ -8,6 +8,7 @@ import type { RootState } from '@/store'
 interface Props {
   payment: any | null
   onClose: () => void
+  preselectedStudentId?: string
 }
 
 const IcClose = () => (
@@ -21,13 +22,13 @@ const IcWallet = () => (
   </svg>
 )
 
-export default function PaymentModal({ payment, onClose }: Props) {
+export default function PaymentModal({ payment, onClose, preselectedStudentId }: Props) {
   const profile = useSelector((s: RootState) => s.profile)
   const { data: students = [] } = useStudents()
 
   const [amount, setAmount] = useState(payment?.amount?.toString() ?? '')
   const [form, setForm] = useState({
-    studentId: payment?.studentId ?? (students as any[])[0]?.id ?? '',
+    studentId: payment?.studentId ?? preselectedStudentId ?? (students as any[])[0]?.id ?? '',
     lessonId:  payment?.lessonId  ?? '',
     month:     payment?.month     ?? new Date().toISOString().slice(0, 7),
     status:    (payment?.status   ?? 'unpaid') as 'paid' | 'unpaid' | 'partial',
@@ -107,15 +108,17 @@ export default function PaymentModal({ payment, onClose }: Props) {
         <div style={{ padding: 22, overflowY: 'auto' }}>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-            <div>
-              <label className="tt-label">Student</label>
-              <select name="studentId" value={form.studentId} onChange={handleChange} className="tt-input">
-                <option value="" disabled>Selectează student</option>
-                {(students as any[]).map((s: any) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
+            {!preselectedStudentId && (
+              <div>
+                <label className="tt-label">Student</label>
+                <select name="studentId" value={form.studentId} onChange={handleChange} className="tt-input">
+                  <option value="" disabled>Selectează student</option>
+                  {(students as any[]).map((s: any) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {!payment && (unpaidLessons as any[]).length > 0 && (
               <div style={{

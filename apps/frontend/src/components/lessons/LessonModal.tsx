@@ -99,15 +99,18 @@ export default function LessonModal({ lesson, onClose, preselectedStudentId }: P
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
             {/* Student */}
-            <div>
-              <label className="tt-label">Student</label>
-              <select name="studentId" value={form.studentId} onChange={handleChange} className="tt-input">
-                <option value="" disabled>Selectează student</option>
-                {(students as any[]).map((s: any) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
+            {!preselectedStudentId && (
+              <div>
+                <label className="tt-label">Student</label>
+                <select name="studentId" value={form.studentId} onChange={handleChange} className="tt-input">
+                  <option value="" disabled>Selectează student</option>
+                  {(students as any[]).map((s: any) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {/* Date */}
 
             {/* Date */}
             <DatePicker
@@ -122,9 +125,9 @@ export default function LessonModal({ lesson, onClose, preselectedStudentId }: P
               <div>
                 <label className="tt-label">Durată</label>
                 <select name="durationMinutes" value={form.durationMinutes} onChange={handleChange} className="tt-input">
-                  <option value={60}>60 min</option>
-                  <option value={90}>90 min</option>
-                  <option value={120}>120 min</option>
+                  {profile.availableDurations.map(d => (
+                    <option key={d} value={d}>{d} min</option>
+                  ))}
                 </select>
               </div>
               <div>

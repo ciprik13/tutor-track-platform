@@ -3,7 +3,7 @@ import {
   IsEmail, IsEnum, IsOptional, IsString,
   MaxLength, MinLength, IsNumber, Min, Max,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 export enum StudentStatusDto {
   active = 'active',
@@ -38,21 +38,24 @@ export class CreateStudentDto {
   @IsOptional()
   @IsString()
   @MaxLength(30)
+  @Transform(({ value }) => value === '' ? undefined : value)
   phone?: string;
 
   @ApiPropertyOptional({ example: 'maria@email.com' })
   @IsOptional()
   @IsEmail()
+  @Transform(({ value }) => value === '' ? undefined : value)
   email?: string;
 
   @ApiPropertyOptional({ example: 'Progres bun la algebră' })
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => value === '' ? undefined : value)
   notes?: string;
 
   @ApiPropertyOptional({
     example: 250,
-    description: 'Preț per ședință specific acestui student. Dacă lipsește, se folosește prețul global din setări.',
+    description: 'Preț per ședință specific acestui student.',
   })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })

@@ -3,6 +3,7 @@ import {
   IsBoolean, IsDateString, IsInt, IsNumber,
   IsOptional, IsString, IsUUID, Max, Min,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateLessonDto {
   @ApiProperty({ example: 'e57a7633-116e-4e27-b777-6dd0e9e5be94' })
@@ -32,10 +33,12 @@ export class CreateLessonDto {
   @ApiPropertyOptional({ example: 'google-event-id-123' })
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => value === '' || value === null ? undefined : value)
   googleCalendarEventId?: string;
 
   @ApiPropertyOptional({ example: 'Covered quadratic equations' })
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => value === '' || value === null ? undefined : value)
   notes?: string;
 }

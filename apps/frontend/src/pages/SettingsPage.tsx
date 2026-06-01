@@ -553,6 +553,47 @@ export default function SettingsPage() {
                     <option value="EUR">EUR — Euro</option>
                   </select>
                 </div>
+
+                <div style={{ marginTop: 18 }}>
+                  <label className="tt-label">Durate lecții disponibile</label>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+                    {([60, 90, 120] as const).map((min) => {
+                      const active = (profile.availableDurations ?? [60]).includes(min)
+                      const isDefault = min === 60
+                      return (
+                        <button
+                          key={min}
+                          type="button"
+                          disabled={isDefault}
+                          onClick={() => {
+                            const current = profile.availableDurations ?? [60]
+                            const next = active
+                              ? current.filter(d => d !== min)
+                              : [...current, min].sort((a, b) => a - b)
+                            dispatch(updateProfile({ availableDurations: next, _userId: user?.id }))
+                          }}
+                          style={{
+                            height: 36, padding: '0 16px', borderRadius: 'var(--r-md)',
+                            fontSize: 13, fontWeight: 600,
+                            border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                            background: active ? 'var(--accent-soft)' : 'var(--bg-input)',
+                            color: active ? 'var(--accent)' : 'var(--text-2)',
+                            cursor: isDefault ? 'not-allowed' : 'pointer',
+                            opacity: isDefault ? 0.6 : 1,
+                            transition: 'all 150ms',
+                            fontFamily: 'var(--font-text)',
+                          }}
+                        >
+                          {min} min{isDefault ? ' (implicit)' : ''}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 8 }}>
+                    60 min este mereu activ. Activează 90 sau 120 min dacă ții lecții mai lungi.
+                  </div>
+                </div>
+
                 <div style={{ marginTop: 20 }}>
                   <button
                     onClick={(e) => { e.preventDefault(); dispatch(updateProfile({ ...form, _userId: user?.id })); setSaved(true); setTimeout(() => setSaved(false), 2000); }}

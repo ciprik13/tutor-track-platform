@@ -24,6 +24,7 @@ const initialState: Profile = {
   currency: 'MDL',
   googleCalendarToken: null,
   googleCalendarConnected: false,
+  availableDurations: [60],
 }
 
 const profileSlice = createSlice({
