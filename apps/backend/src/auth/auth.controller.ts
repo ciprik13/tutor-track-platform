@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Post,
   Patch,
+  Delete,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -74,5 +75,15 @@ export class AuthController {
     @Body() dto: { name?: string; phone?: string },
   ) {
     return this.authService.updateMe(user.sub, dto);
+  }
+
+  @Delete("me")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Delete current user account (soft delete)" })
+  @ApiResponse({ status: 200, description: "Account deleted successfully" })
+  deleteMe(@CurrentUser() user: JwtPayload) {
+    return this.authService.deleteMe(user.sub);
   }
 }

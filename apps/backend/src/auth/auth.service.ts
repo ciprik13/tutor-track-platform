@@ -161,6 +161,14 @@ export class AuthService {
     });
   }
 
+  async deleteMe(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { deletedAt: new Date() },
+    });
+    return { message: 'Account deleted successfully' };
+  }
+
   // ── Private ───────────────────────────────────────────────
   private async signToken(user: {
     id: string;
