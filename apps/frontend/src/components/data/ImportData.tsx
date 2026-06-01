@@ -218,7 +218,7 @@ export default function ImportData() {
             durationMinutes:       lesson.durationMinutes,
             price:                 Number(lesson.price),
             isPaid:                lesson.isPaid ?? false,
-            googleCalendarEventId: lesson.googleCalendarEventId ?? null,
+            googleCalendarEventId: lesson.googleCalendarEventId || null,
             notes:                 lesson.notes,
           });
           lessonIdMap[lesson.id] = created.id;
