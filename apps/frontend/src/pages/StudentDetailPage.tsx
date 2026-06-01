@@ -66,7 +66,9 @@ export default function StudentDetailPage() {
 
   const unpaidLessons = (lessons as any[]).filter(l => !l.isPaid);
   const unpaidTotal   = unpaidLessons.reduce((s: number, l: any) => s + Number(l.price), 0);
-  const paidTotal     = (lessons as any[]).filter(l => l.isPaid).reduce((s: number, l: any) => s + Number(l.price), 0);
+  const paidTotal = (payments as any[])
+  .filter(p => p.status === 'paid')
+  .reduce((s: number, p: any) => s + Number(p.amount), 0)
 
   const handleMarkAllPaid = () => {
     if (unpaidLessons.length === 0) return;
