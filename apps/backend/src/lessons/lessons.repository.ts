@@ -34,7 +34,13 @@ export class LessonsRepository {
         student: {
           select: { id: true, name: true, subject: true, grade: true },
         },
-        payment: true,
+        lessonPayments: {
+          include: {
+            payment: {
+              select: { id: true, amount: true, status: true, paidAt: true, category: true },
+            },
+          },
+        },
       },
     });
   }
