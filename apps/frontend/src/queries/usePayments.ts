@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { paymentsApi } from '@/lib/paymentsApi'
+import type { BulkPaymentPayload } from '@/lib/paymentsApi'
 
 export function usePayments(filters?: {
   studentId?: string
@@ -29,7 +30,21 @@ export function useCreatePayment() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: paymentsApi.create,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payments'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] })
+      queryClient.invalidateQueries({ queryKey: ['lessons'] })
+    },
+  })
+}
+
+export function useCreateBulkPayment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: BulkPaymentPayload) => paymentsApi.createBulk(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] })
+      queryClient.invalidateQueries({ queryKey: ['lessons'] })
+    },
   })
 }
 

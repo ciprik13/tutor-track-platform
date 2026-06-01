@@ -34,6 +34,17 @@ enum PaymentStatus {
   partial
 }
 
+enum PaymentType {
+  per_lesson
+  prepaid
+  postpaid
+}
+
+enum PaymentCategory {
+  single
+  bulk
+}
+
 enum StudentStatus {
   active
   inactive
@@ -89,7 +100,8 @@ model Student {
   phone   String?
   email   String?
   notes   String?
-  priceOverride Decimal? @db.Decimal(10, 2) @map("price_override")
+  priceOverride Decimal?    @db.Decimal(10, 2) @map("price_override")
+  paymentType   PaymentType @default(per_lesson) @map("payment_type")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -133,7 +145,7 @@ model Lesson {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
-  payment Payment?
+  lessonPayments LessonPayment[]
 
   @@index([tutorId, date])
   @@index([studentId, date])
@@ -149,13 +161,15 @@ model Payment {
   tutor     User    @relation("TutorPayments", fields: [tutorId], references: [id])
   studentId String  @map("student_id")
   student   Student @relation(fields: [studentId], references: [id])
-  lessonId  String  @unique @map("lesson_id")
-  lesson    Lesson  @relation(fields: [lessonId], references: [id])
 
-  amount Decimal       @db.Decimal(10, 2)
-  month  String
-  status PaymentStatus @default(unpaid)
-  paidAt DateTime?     @map("paid_at")
+  lessonId  String? @map("lesson_id")
+
+  amount   Decimal         @db.Decimal(10, 2)
+  month    String
+  status   PaymentStatus   @default(unpaid)
+  category PaymentCategory @default(single) @map("category")
+  paidAt   DateTime?       @map("paid_at")
+  notes    String?
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -163,10 +177,27 @@ model Payment {
   createdBy String?   @map("created_by")
   updatedBy String?   @map("updated_by")
 
+  lessonPayments LessonPayment[]
+
   @@index([tutorId, month])
   @@index([studentId, month])
   @@index([tutorId, status])
+  @@index([lessonId])
   @@map("payments")
+}
+
+model LessonPayment {
+  id        String  @id @default(uuid())
+  paymentId String  @map("payment_id")
+  payment   Payment @relation(fields: [paymentId], references: [id])
+  lessonId  String  @map("lesson_id")
+  lesson    Lesson  @relation(fields: [lessonId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([paymentId, lessonId])
+  @@index([lessonId])
+  @@map("lesson_payments")
 }
 
 // ─── Google Calendar Tokens ───────────────────────────────

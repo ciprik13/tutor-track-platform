@@ -4,7 +4,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
-import { CreatePaymentDto } from './dto/create-payment.dto';
+import { CreatePaymentDto, BulkPaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -42,13 +42,25 @@ export class PaymentsController {
 
   @Post()
   @Roles('TUTOR', 'ADMIN')
-  @ApiOperation({ summary: 'Create payment for a lesson' })
+  @ApiOperation({ summary: 'Create single payment for a lesson (REQ-06)' })
   @ApiResponse({ status: 201, description: 'Payment created' })
   create(
     @Body() dto: CreatePaymentDto,
     @CurrentUser() user: JwtPayload,
   ) {
     return this.paymentsService.create(user.sub, dto, user.sub);
+  }
+
+  @Post('bulk')
+  @Roles('TUTOR', 'ADMIN')
+  @ApiOperation({ summary: 'Create bulk payment for multiple lessons (REQ-05/REQ-07)' })
+  @ApiResponse({ status: 201, description: 'Bulk payment created, all lessons marked as paid' })
+  @ApiResponse({ status: 400, description: 'lessonIds empty or lessons not found' })
+  createBulk(
+    @Body() dto: BulkPaymentDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.paymentsService.createBulk(user.sub, dto, user.sub);
   }
 
   @Patch(':id')
