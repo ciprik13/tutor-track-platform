@@ -8,6 +8,7 @@ export interface Profile {
   currency: 'MDL' | 'USD' | 'EUR'
   googleCalendarToken: string | null
   googleCalendarConnected: boolean
+  availableDurations: number[]
 }
 
 export interface Student {

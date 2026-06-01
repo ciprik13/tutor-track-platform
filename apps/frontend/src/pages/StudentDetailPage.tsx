@@ -7,6 +7,7 @@ import { usePayments, useDeletePayment, useCreateBulkPayment } from "@/queries/u
 import { useQueryClient } from "@tanstack/react-query";
 import LessonModal from "@/components/lessons/LessonModal";
 import PaymentModal from "@/components/payments/PaymentModal";
+import StudentReport from "@/components/reports/StudentReport";
 
 const IcBack = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -349,21 +350,11 @@ export default function StudentDetailPage() {
 
         {/* Report tab */}
         {activeTab === 'report' && (
-          <div className="tt-card" style={{ padding: 24, textAlign: 'center' }}>
-            <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6 }}>
-              Mergi la pagina{' '}
-              <span
-                onClick={() => navigate('/reports')}
-                style={{ color: 'var(--accent)', cursor: 'pointer', fontWeight: 500 }}
-              >
-                Rapoarte
-              </span>{' '}
-              pentru a genera raportul lunar al acestui student.
-            </p>
+          <div className="tt-card" style={{ padding: 24 }}>
+            <StudentReport student={student} />
           </div>
         )}
-      </div>
-
+        </div>
       {bulkConfirmDialog && (
     <div
       onClick={(e) => e.target === e.currentTarget && setBulkConfirmDialog(false)}
@@ -410,10 +401,18 @@ export default function StudentDetailPage() {
   )}
 
       {lessonModal && (
-        <LessonModal lesson={editLesson} onClose={() => setLessonModal(false)} />
+        <LessonModal
+          lesson={editLesson}
+          onClose={() => setLessonModal(false)}
+          preselectedStudentId={id}
+        />
       )}
       {paymentModal && (
-        <PaymentModal payment={editPayment} onClose={() => setPaymentModal(false)} />
+        <PaymentModal
+          payment={editPayment}
+          onClose={() => setPaymentModal(false)}
+          preselectedStudentId={id}
+        />
       )}
     </div>
   );
